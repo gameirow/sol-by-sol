@@ -14,6 +14,7 @@ Team: João (code owner) and Thea (game design). Claude writes all the code.
   - All colours and fonts are CSS custom properties in the one `:root` block at the top of `src/index.src.html`. Change them there only.
   - Fonts: IM Fell English SC (headings, signs, canvas labels; one weight, so no bold) + Spectral (body; numbers lining + tabular). Canvas code uses `FD` / `FB`.
   - HUD = wooden shelf with a brass sol dial and glass vials; cards and Sojourner's bubble are parchment; buttons are gold or wood, at least 44 px.
+    The Power vial shows power LEFT today ("2/9" = 2 of 9 left; empty = nothing left). Thea was confused when it showed power used (15 Nov).
   - Status colours are CSS variables: bright on wood, deep inside `.card` (it overrides `--ok`/`--warnc`/`--bad`). Use `fCol`/`radCol` in HTML, `radHex` on canvases.
   - NO emojis anywhere. Icons are the drawn line-icon set `ICONS` / `ic('name')`: brass on wood, ink on parchment.
   - 3D: always dusk. The three weather looks (clear / hazy / dust storm, `LOOK`) carry game info and must stay clearly different.

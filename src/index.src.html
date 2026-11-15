@@ -88,7 +88,7 @@ a{color:var(--accent2)}
 #prompt b{color:var(--glow2)}
 #help{position:fixed;right:12px;bottom:12px;font-size:13.5px;color:var(--mute);background:rgba(43,30,28,.78);border:1px solid var(--line);padding:7px 12px;border-radius:6px;z-index:5}
 #help b{color:var(--cream);font-weight:600}
-#ticker{position:fixed;right:12px;bottom:50px;max-width:420px;font-size:15px;line-height:1.4;background:var(--panel);border:2px solid var(--ink);border-left:5px solid var(--gold);box-shadow:inset 0 0 0 1.5px var(--wood-edge),0 0 22px rgba(255,178,91,.2),0 10px 30px rgba(0,0,0,.4);padding:10px 14px;border-radius:6px;z-index:5;display:none}
+#ticker{position:fixed;right:12px;bottom:50px;max-width:420px;font-size:15px;line-height:1.4;background:var(--panel);border:2px solid var(--ink);border-left:5px solid var(--gold);box-shadow:inset 0 0 0 1.5px var(--wood-edge),0 0 22px rgba(255,178,91,.2),0 10px 30px rgba(0,0,0,.4);padding:10px 14px;border-radius:6px;z-index:25;display:none}
 #ticker b{color:var(--glow2)}
 
 /* ---- parchment cards ---- */
@@ -406,7 +406,7 @@ function endSol(){
 function doAct(k){
   if(S.acts.includes(k)) return toast('You already did that today.');
   if(S.acts.length>=ACTS_PER_SOL){sfx('no');return toast(`Only ${ACTS_PER_SOL} activities a day. Go to the BUNK to sleep.`);}
-  if(ACT_COST[k]>0 && used(S.alloc,[...S.acts,k])>available()){sfx('no');return toast('Not enough power today!');}
+  if(ACT_COST[k]>0 && used(S.alloc,[...S.acts,k])>available()){sfx('no');return toast('Not enough power left! Turn down the <b>farm</b> or the <b>air &amp; heat</b> on the POWER screen first.');}
   S.acts.push(k); sfx('ok'); updateHUD(); return true;
 }
 
@@ -468,7 +468,7 @@ function updateHUD(){
   $('hud').innerHTML=`<div class="shelf">
   <div class="dial"><span class="a">SOL</span><b>${Math.min(S.sol,SOLS)}</b><span class="c">/${SOLS}</span><span class="dots" title="Activities done today">${dots}</span></div>
   ${vial('tap health'+(H<4?' warn':''),'onclick="openHealth()"',`<span class="hrow">${tube(H/10,'var(--pink)')}<span class="minis">${mini('rad',f.rad,'Radiation')}${mini('run',f.fit,'Exercise')}${mini('temp',f.air,'Air & heat')}${mini('bed',f.well,'Sleep & food')}${mini('smile',f.mood,'Mood')}</span></span>`,H.toFixed(1),fCol(H),'heart','Health')}
-  ${vial(u>av?'warn':'','',tube(av?u/av:1,'var(--gold)'),`${u}/${av}`,'','bolt','Power')}
+  ${vial(u>av?'warn':'','title="Power left today"',tube(av?Math.max(0,av-u)/av:0,'var(--gold)'),`${Math.max(0,av-u)}/${av}`,'','bolt','Power')}
   ${vial(S.food<=2?'warn':'','',tube(S.food/10,'var(--moss)'),`${S.food}/10`,'','sprout','Food')}
   ${vial(idx>=6?'warn':watch?'watch':'','',tube(idx/10,radCol(idx)),`${idx}/10`,radCol(idx),'rad','Outside')}
   <div class="vial gems" title="Crystals found"><span class="gemrow">${gems}</span><b class="v">${S.samples}/${SAMPLES_GOAL}</b></div></div>
@@ -651,6 +651,7 @@ function openComms(){
   overlay(`<h2>${ic('dish')}COMMS · EARTH LINK</h2>
   <div class="note">Today Earth is <b>${o.km} million km</b> away. A radio message needs <b>${o.min} minutes</b> to get there, and the answer needs ${o.min} more.</div>
   <div class="row"><div class="lbl">${ic('chat')}<b>Call your family</b><small>Happier crew · costs 1 power</small></div><button class="btn" ${called?'disabled':''} onclick="act('call')">${called?'CALLED':'CALL'}</button></div>
+  ${noPowerNote('call')}
   ${S.msgs.map(m=>`<div class="msg" style="${m.alert?'border-color:var(--bad);border-width:2px':''}"><div class="t">Sol ${m.sol}</div><b>${m.title}</b><div style="margin-top:6px">${m.body}</div><div>${(m.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div></div>`).join('')}
   <p><button class="btn" onclick="closeOv();sfx('ok')">CLOSE</button><button class="btn alt sm" onclick="realOrGame()">REAL OR GAME?</button><button class="btn alt sm" onclick="sources()">NASA DATA</button></p>`);
 }
@@ -726,10 +727,15 @@ window.eatMeal=function(){
   S.food-=MEAL_FOOD; S.ate=true; eatSnd(); updateHUD(); closeOv();
   say('happy',`Yum! Fresh food from the greenhouse makes the crew happier.`);
 };
+// shown on the treadmill and comms cards when the activity can't be powered right now
+function noPowerNote(k){ if(S.acts.includes(k)||ACT_COST[k]<=0||used(S.alloc,[...S.acts,k])<=available()) return '';
+  return `<div class="note bad">No power left for this today. Turn down the farm or the air &amp; heat to free 1 power. <button class="btn alt sm" onclick="goPower()">${ic('bolt')}POWER</button></div>`; }
+window.goPower=()=>{ sfx('tick'); openPower(); };
 function openGym(){
   const done=S.acts.includes('exercise');
   overlay(`<h2>${ic('run')}TREADMILL</h2><p>Mars gravity is weak, so your muscles and bones get lazy. Running keeps them strong. The harness and bungee cords hold you down while you run.</p>
   <div class="row"><div class="lbl">${ic('run')}<b>Run on the treadmill</b><small>Stronger muscles and bones · costs 1 power</small></div><button class="btn" ${done?'disabled':''} onclick="act('exercise')">${done?'DONE':'RUN!'}</button></div>
+  ${noPowerNote('exercise')}
   <p><button class="btn alt" onclick="closeOv()">CLOSE</button></p>`);
 }
 function openAirlock(){
