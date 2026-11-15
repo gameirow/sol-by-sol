@@ -772,7 +772,7 @@ function openBunk(){
   ${a.farm<FARM_NEED?`<div class="note">The farm lights are low: food will drop by ${FARM_NEED-a.farm} tonight.</div>`:''}
   <p><button class="btn" onclick="sleepNow()">${ic('moon')}End sol ${S.sol}</button><button class="btn alt" onclick="closeOv()">NOT YET</button></p>`);
 }
-window.sleepNow=function(){ if(ONMARS) return; closeOv(); fadeSleep(()=>{ endSol(); }); };
+window.sleepNow=function(){ if(ONMARS) return; closeOv(); yawnSnd(); fadeSleep(()=>{ endSol(); }); };
 
 function showReport({uGy,mSv,src,before,dFood,fail,w,need}){
   const f=S.f, eva=S.acts.includes('eva'), fr=evaFrac(), idx=radIndex(outsideToday()); const d=k=>{const v=f[k]-before[k];return `<b style="color:${v>=0?'var(--ok)':'var(--bad)'}">${v>=0?'▲':'▼'}</b>`;};
@@ -864,7 +864,9 @@ function audioStart(){ if(AUD.on) return; try{
   A.noise=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate); {const d=A.noise.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;}
   // wind: a soft rushing band + a thin whistle for the gusts, both muffled by the walls when you are inside
   A.wl=AC.createBiquadFilter(); A.wl.type='lowpass'; A.wl.frequency.value=320; A.wl.connect(A.master);
-  const w=AC.createBufferSource(); w.buffer=A.noise; w.loop=true; A.wf=AC.createBiquadFilter(); A.wf.type='bandpass'; A.wf.frequency.value=500; A.wf.Q.value=.6;
+  // wind uses dark "brown" noise (deep rumble, not the bright hiss that sounds like a shower), through a narrow filter that glides = "whooo"
+  A.brown=AC.createBuffer(1,AC.sampleRate*4,AC.sampleRate); {const d=A.brown.getChannelData(0); let last=0; for(let i=0;i<d.length;i++){last=(last+.02*(Math.random()*2-1))/1.02; d[i]=last*3.5;}}
+  const w=AC.createBufferSource(); w.buffer=A.brown; w.loop=true; A.wf=AC.createBiquadFilter(); A.wf.type='bandpass'; A.wf.frequency.value=320; A.wf.Q.value=2.2;
   A.wg=AC.createGain(); A.wg.gain.value=0; w.connect(A.wf); A.wf.connect(A.wg); A.wg.connect(A.wl); w.start();
   const w2=AC.createBufferSource(); w2.buffer=A.noise; w2.loop=true; w2.playbackRate.value=.7; A.hf=AC.createBiquadFilter(); A.hf.type='bandpass'; A.hf.Q.value=9; A.hf.frequency.value=1300;
   A.hg=AC.createGain(); A.hg.gain.value=0; w2.connect(A.hf); A.hf.connect(A.hg); A.hg.connect(A.wl); w2.start();
@@ -888,9 +890,10 @@ function pluck(m,t,vol){ const o=AC.createOscillator(),g=AC.createGain(),lp=AC.c
   g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0001,t+.28); o.connect(lp); lp.connect(g); g.connect(AUD.music); o.start(t); o.stop(t+.3); }
 function thump(t,vol){ const o=AC.createOscillator(),g=AC.createGain(); o.frequency.setValueAtTime(68,t); o.frequency.exponentialRampToValueAtTime(38,t+.3);
   g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0001,t+.35); o.connect(g); g.connect(AUD.music); o.start(t); o.stop(t+.4); }
-function noiseBurst(t,dur,type,f,q,vol,wet,rate=1){ const n=AC.createBufferSource(), bf=AC.createBiquadFilter(), g=AC.createGain();
+function noiseBurst(t,dur,type,f,q,vol,wet,rate=1,att=0){ const n=AC.createBufferSource(), bf=AC.createBiquadFilter(), g=AC.createGain();
   n.buffer=AUD.noise; n.playbackRate.value=rate; bf.type=type; bf.frequency.value=f; bf.Q.value=q;
-  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0001,t+dur); n.connect(bf); bf.connect(g); audSend(g,wet); n.start(t,Math.random()*1.5); n.stop(t+dur+.03); }
+  if(att){ g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+att); } else g.gain.setValueAtTime(vol,t);   // att: soft fade-in instead of a click
+  g.gain.exponentialRampToValueAtTime(.0001,t+dur); n.connect(bf); bf.connect(g); audSend(g,wet); n.start(t,Math.random()*1.5); n.stop(t+dur+.03); }
 function sweep(t,f0,f1,dur,vol,type='sine',wet=0){ const o=AC.createOscillator(),g=AC.createGain(); o.type=type; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f1,t+dur);
   g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0001,t+dur); o.connect(g); audSend(g,wet); o.start(t); o.stop(t+dur+.02); }
 function audioTick(){ const A=AUD; if(!A.on) return; const t=AC.currentTime;
@@ -916,19 +919,35 @@ function audioTick(){ const A=AUD; if(!A.on) return; const t=AC.currentTime;
   // wind: gusty outside, strong in a dust storm, only a soft hum through the walls inside
   const L=S&&S.wx?today()[4]:'H', dust=L==='L'?1:L==='M'?.35:0, out=ONMARS;
   const gust=Math.max(.2,.6+.4*Math.sin(t*.37)*Math.sin(t*.13+1)+(Math.random()-.5)*.12);
-  A.wg.gain.setTargetAtTime(out?(.07+.12*dust+.03*k)*gust:.03+.02*dust,t,.6); A.wf.frequency.setTargetAtTime(380+300*gust+450*dust,t,.6);
-  A.hg.gain.setTargetAtTime(out?(.015+.03*dust)*Math.max(0,gust-.55)*2.5:0,t,.8); A.hf.frequency.setTargetAtTime(1100+600*gust,t,.8);
-  A.wl.frequency.setTargetAtTime(out?5000:320,t,.3); }
+  A.wg.gain.setTargetAtTime(out?(.12+.16*dust+.04*k)*gust:.05+.03*dust,t,1.2); A.wf.frequency.setTargetAtTime(220+260*gust+220*dust,t,1.2);   // slow swells, deep
+  A.hg.gain.setTargetAtTime(out?(.004+.01*dust)*Math.max(0,gust-.6)*2.5:0,t,1.2); A.hf.frequency.setTargetAtTime(700+300*gust,t,1.2);      // only a faint whistle in strong gusts
+  A.wl.frequency.setTargetAtTime(out?1100+500*dust:300,t,.3); }
 // footsteps: hollow wood inside, crunchy dust outside, a stony tap on the paving plates by the door
 function footstep(surf){ if(!AUD.on||MUTE) return; const t=AC.currentTime, v=.8+Math.random()*.4, r=.85+Math.random()*.3;
   if(surf==='wood'){ noiseBurst(t,.09,'lowpass',900*r,.8,.32*v,.22); sweep(t,115*r,70,.13,.28*v,'sine',.15); }
-  else if(surf==='stone'){ noiseBurst(t,.05,'highpass',2600*r,.7,.16*v,.08); sweep(t,430*r,380,.06,.07*v,'triangle'); sweep(t,95,60,.08,.14*v); }
-  else { noiseBurst(t,.14,'bandpass',2200*r,.9,.26*v,0,r); noiseBurst(t+.025,.08,'bandpass',1100*r,1.3,.14*v,0,r); sweep(t,85,55,.1,.12*v); } }
+  else if(surf==='stone'){ noiseBurst(t,.1,'bandpass',900*r,.8,.08*v,.06,r*.8,.012); sweep(t,190*r,140,.09,.035*v); sweep(t,80,55,.1,.09*v); }   // soft rounded knock on the stepping stones
+  else { noiseBurst(t,.22,'lowpass',420*r,.4,.14*v,0,r*.6,.03); noiseBurst(t+.03,.16,'lowpass',260*r,.5,.08*v,0,r*.5,.025); sweep(t,62,45,.14,.07*v); } }   // muffled sandy step, like hearing it through the suit
 // storm shutters rolling: a rattle, then a soft thud
 function shutterSnd(){ if(!AUD.on||MUTE) return; const t=AC.currentTime, n=AC.createBufferSource(), lp=AC.createBiquadFilter(), g=AC.createGain(), am=AC.createOscillator(), ag=AC.createGain(), env=AC.createGain();
   n.buffer=AUD.noise; n.loop=true; lp.type='lowpass'; lp.frequency.value=480; am.frequency.value=17; ag.gain.value=.5; g.gain.value=.5; am.connect(ag); ag.connect(g.gain);
   env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(.32,t+.2); env.gain.setValueAtTime(.32,t+2.2); env.gain.linearRampToValueAtTime(0,t+2.8);
   n.connect(lp); lp.connect(g); g.connect(env); audSend(env,.15); n.start(t); n.stop(t+2.9); am.start(t); am.stop(t+2.9); sweep(t+2.6,140,60,.3,.22,'sine',.2); }
+// going to bed: a soft yawn ("aah" sliding into a sleepy "mmm", with breath), then three tiny lullaby bells
+function yawnSnd(){ if(!AUD.on||MUTE) return; const t=AC.currentTime, D=1.9;
+  // mostly breath: an airy "haaah" that closes into a sleepy "mmm". No buzzy tone and nothing low (low buzz = fart sound!)
+  const out=AC.createGain(); out.gain.setValueAtTime(.0001,t); out.gain.exponentialRampToValueAtTime(.11,t+.5); out.gain.setValueAtTime(.11,t+1.0); out.gain.exponentialRampToValueAtTime(.0001,t+D+.3);
+  const hp=AC.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=380; hp.Q.value=.5;
+  const lp=AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.setValueAtTime(3200,t); lp.frequency.setValueAtTime(3200,t+.9); lp.frequency.exponentialRampToValueAtTime(900,t+D);   // mouth closing
+  hp.connect(lp); lp.connect(out); audSend(out,.3);
+  const br=AC.createBufferSource(); br.buffer=AUD.noise; br.loop=true; br.playbackRate.value=.9;
+  for(const [f0,f1,q,k] of [[850,520,4,1],[1350,950,5,.7],[2600,1900,6,.25]]){                // breath shaped like "aah" -> "mmm"
+    const bp=AC.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=q; bp.frequency.setValueAtTime(f0,t); bp.frequency.setValueAtTime(f0,t+.8); bp.frequency.linearRampToValueAtTime(f1,t+D);
+    const g=AC.createGain(); g.gain.value=k; br.connect(bp); bp.connect(g); g.connect(hp); }
+  const hum=AC.createOscillator(), hg=AC.createGain(); hum.type='sine';                        // a very soft, high little "voice" under the breath
+  hum.frequency.setValueAtTime(440,t); hum.frequency.linearRampToValueAtTime(560,t+.5); hum.frequency.exponentialRampToValueAtTime(370,t+D);
+  hg.gain.setValueAtTime(0,t); hg.gain.linearRampToValueAtTime(.06,t+.45); hg.gain.linearRampToValueAtTime(.025,t+D); hum.connect(hg); hg.connect(hp);
+  br.start(t); hum.start(t); br.stop(t+D+.4); hum.stop(t+D+.4);
+  [81,78,74].forEach((m,i)=>bell(m,t+D+.2+i*.32,.03,AUD.sfx,.7,2)); }
 // eating: three crunchy munches and a happy little bell
 function eatSnd(){ if(!AUD.on||MUTE) return sfx('ok'); const t=AC.currentTime;
   for(let i=0;i<3;i++){ const r=.9+Math.random()*.25; noiseBurst(t+i*.2,.11,'bandpass',1500*r,1.1,.3,.05,r); sweep(t+i*.2,160*r,90,.08,.12); }
