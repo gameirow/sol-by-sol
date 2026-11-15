@@ -16,13 +16,14 @@ If you change a caption in SHOTS (src/index.src.html), change the line here too.
 import asyncio, pathlib, sys
 import edge_tts
 
-VOICE = sys.argv[1] if len(sys.argv) > 1 else "en-US-EmmaMultilingualNeural"   # warm, bright, very natural
-RATE, PITCH = "+4%", "+3Hz"                                                      # a little quicker and lighter = happier
+VOICE = sys.argv[1] if len(sys.argv) > 1 else "en-US-AnaNeural"   # a real child voice: young and cute (chosen by João, 15 Nov 2026)
+RATE, PITCH = "+8%", "+6Hz"                                         # a little quicker and higher = brighter, more excited
 
-# Same words as the speech bubbles, written the way they should be said.
+# Same words as the speech bubbles, written the way they should be SAID (respelled where the voice gets it wrong:
+# "So-jurner" makes it say SO-jur-ner).
 LINES = {
     "launch": "Three... two... one... Lift-off!",
-    0: "Hi, I'm Sojourner! We're flying to Mars! It's so far away that a radio call home takes up to twenty-two minutes. So on Mars... you decide.",
+    0: "Hi there! I'm So-jurner! We're flying to Mars! It's so far away that a radio call home takes up to twenty-two minutes. So on Mars... you decide.",
     1: "Whoa, watch out! Sometimes the Sun throws out a radiation storm. You can't see it, and you can't feel it. Only thick walls keep you safe.",
     2: "Here we are: Gale crater, on Mars! NASA's rover Curiosity has measured the weather and radiation here since 2012. And this game uses its real numbers!",
     4: "Your power comes from sunlight. But dust lands on the solar panels every day. Dusty panels make less power, so someone has to go out and clean them.",

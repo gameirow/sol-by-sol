@@ -1539,18 +1539,18 @@ function buildIntro(){
 }
 const SHOTS=[
  // 0: lift-off from Kennedy Space Center, Florida, at sunrise. The rocket flies east over the Atlantic, like real launches.
- {d:9.5,world:'ksc',note:'Kennedy Space Center · Florida',voAt:1.0,vo:'launch',bed:['lowpass',80,.05],cap:['happy',`Three, two, one... <b>lift-off!</b>`],
-  run(e,I,k,dt){const L=introSet.ksc,t=I.t,T0=1.95,T1=2.7,now=performance.now()/1000;
+ {d:10.3,world:'ksc',note:'Kennedy Space Center · Florida',voAt:1.0,vo:'launch',bed:['lowpass',80,.05],cap:['happy',`Three, two, one... <b>lift-off!</b>`],
+  run(e,I,k,dt){const L=introSet.ksc,t=I.t,T0=2.75,T1=4.5,now=performance.now()/1000;
     if(t>=T0&&!I.ign){I.ign=1;bed('lowpass',130,.24,.45);} if(t>=T1&&!I.lift){I.lift=1;bed('lowpass',220,.4,.8);}
     const lt=Math.max(0,t-T1), y=26+.5*9*lt*lt; L.rocket.position.y=y; L.rocket.rotation.z=-Math.min(.12,lt*lt*.004);
     const coreOn=t>=T0?Math.min(1,(t-T0)*2.5):0, srbOn=t>=T1?1:0; rocketPose(L.rocket,-1,now,coreOn,srbOn); L.update(dt,now,coreOn,srbOn);
-    introCam.fov=56-22*sm01(4,9.5,t); introCam.updateProjectionMatrix();   // zoom in as the rocket climbs
-     introCam.position.copy(V(-175,10,64).lerp(V(-128,6,44),sm01(0,9.5,t))); introCam.lookAt(0,46+Math.max(0,y-26)*.92,-6);}},
- {d:10,world:'space',note:'Sizes and distances not to scale',vo:0,bed:['lowpass',140,.11],cap:['happy',`Hi, I'm <b>Sojourner</b>! We are flying to Mars. It is so far away that a radio call home takes up to <b>22 minutes</b>. So on Mars, <b>you</b> decide.`],
+    introCam.fov=56-22*sm01(5,10.3,t); introCam.updateProjectionMatrix();   // zoom in as the rocket climbs
+     introCam.position.copy(V(-175,10,64).lerp(V(-128,6,44),sm01(0,10.3,t))); introCam.lookAt(0,46+Math.max(0,y-26)*.92,-6);}},
+ {d:14,world:'space',note:'Sizes and distances not to scale',vo:0,bed:['lowpass',140,.11],cap:['happy',`Hi there! I'm <b>Sojourner</b>! We are flying to Mars. It is so far away that a radio call home takes up to <b>22 minutes</b>. So on Mars, <b>you</b> decide.`],
   run(e,I){if(introCam.fov!==50){introCam.fov=50;introCam.updateProjectionMatrix();} const s=introSet,u=.015+.16*e,p=s.P(u),now=performance.now()/1000; s.ship.position.copy(p); s.ship.lookAt(s.P(u+.02));
     rocketPose(s.rocket,I.t,now,1,1); const tgt=s.shipPos(THREE.MathUtils.lerp(46,84,sm01(3.5,7.5,I.t)));
     const dist=THREE.MathUtils.lerp(9,1.9,sm01(3,8.5,I.t)); introCam.position.copy(tgt).add(V(.32,.16,.93).multiplyScalar(dist)).add(V(1.2*e,0,0)); introCam.lookAt(tgt);}},
- {d:11,world:'space',note:'Sizes and distances not to scale',vo:1,storm:1,bed:['lowpass',140,.11],cap:['alarm',`Watch out! Sometimes the Sun throws out a <b>radiation storm</b>. You can't see it or feel it. Only <b>thick walls</b> keep you safe.`],
+ {d:12.5,world:'space',note:'Sizes and distances not to scale',vo:1,storm:1,bed:['lowpass',140,.11],cap:['alarm',`Watch out! Sometimes the Sun throws out a <b>radiation storm</b>. You can't see it or feel it. Only <b>thick walls</b> keep you safe.`],
   run(e,I,k){const s=introSet,p=s.P(.4+.12*e),now=performance.now()/1000; s.ship.position.copy(p); s.ship.lookAt(s.P(.43+.12*e)); rocketPose(s.rocket,99,now,0,0);
     const o=s.shipPos(80),d=o.clone().sub(s.SUN),dist=d.length(); d.normalize();
     introCam.position.copy(o).addScaledVector(d,2.4).add(V(.9,.75,0)); introCam.lookAt(o);
@@ -1565,12 +1565,12 @@ const SHOTS=[
     s.tag.material.opacity=sm01(.15,.45,e);}},
  {d:8,world:'mars',note:'Gale crater · Mars',bed:['lowpass',650,.08],bump:.3,
   run(e){const a=V(150,72,190).lerp(V(24,7.5,36),e); camera.position.copy(a); camera.lookAt(V(-2,2.2,8));}},
- {d:10,world:'mars',vo:4,bed:['lowpass',520,.07],cap:['worried',`Your power comes from <b>sunlight</b>. But dust lands on the solar panels every day. Dusty panels make less power, so someone must go out and <b>clean them</b>.`],
+ {d:12,world:'mars',vo:4,bed:['lowpass',520,.07],cap:['worried',`Your power comes from <b>sunlight</b>. But dust lands on the solar panels every day. Dusty panels make less power, so someone must go out and <b>clean them</b>.`],
   run(e){const a=.9+1.5*e,x=-15+13*Math.cos(a),z=22+13*Math.sin(a); camera.position.set(x,window.__gh(x,z)+3.4+e,z); camera.lookAt(V(-15,1.2,22));
     const d=.6*Math.min(1,e*1.6),m=window.__panelM; m.color.setRGB(1-d*.2,1-d*.6,1-d*.9); m.roughness=.18+d*1.2;}},
- {d:11,world:'mars',vo:5,bed:['lowpass',230,.03],cap:['happy',`Inside the base: a <b>treadmill</b> to keep muscles strong in Mars's weak gravity, a <b>bunk</b> for rest and a <b>farm</b> for food. They all need looking after.`],
+ {d:12,world:'mars',vo:5,bed:['lowpass',230,.03],cap:['happy',`Inside the base: a <b>treadmill</b> to keep muscles strong in Mars's weak gravity, a <b>bunk</b> for rest and a <b>farm</b> for food. They all need looking after.`],
   run(e){const a=THREE.MathUtils.degToRad(-150-118*e),sx=Math.sin(a),cz=Math.cos(a); camera.position.set(-sx*1.6,1.65,-cz*1.6); camera.lookAt(V(sx*5,1.35,cz*5));}},
- {d:8,world:'mars',vo:6,bed:['lowpass',230,.025],cap:['happy',`A day on Mars is called a <b>sol</b>. Your mission: <b>10 sols</b> and <b>3 crystals</b>. Every choice counts, commander!`],
+ {d:10.5,world:'mars',vo:6,bed:['lowpass',230,.025],cap:['happy',`A day on Mars is called a <b>sol</b>. Your mission: <b>10 sols</b> and <b>3 crystals</b>. Every choice counts, commander!`],
   run(e){camera.position.set(0,1.65,-2.6+3.6*e); camera.lookAt(V(0,1.9,12));}}];
 /* ---- sharper picture while the film plays: full resolution (up to 2x on sharp screens) and glow only on really bright things.
    (No MSAA: together with the bloom pass it produced black blocks.) ---- */
