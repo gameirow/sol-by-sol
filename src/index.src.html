@@ -276,15 +276,21 @@ const SOLS = 10;                 // mission length (1 sol = 24 h 39 min)
 const BG_UGY = 115;              // background cosmic-ray dose at Gale crater, µGy/sol — Curiosity RAD, quiet days May 2024 (RadLab)
 const QF = 3.05;                 // Mars-surface quality factor (dose equivalent ÷ absorbed dose), Guo et al. 2021
 const BUDGET = +(600/860*SOLS*1.0275).toFixed(2); // mSv: this mission's share of NASA's 600 mSv career limit over an 860-day Mars mission
-const SOLAR = {V:11,H:10,M:9,L:7};  // per sol from sunlight level (REMS UV sensor). Game units.
+const SOLAR = {V:10,H:9,M:8,L:6};  // per sol from sunlight level (REMS UV sensor). Game units.
 const UVNAME = {V:'Very high',H:'High',M:'Medium',L:'Low (dusty)'};
 const FARM_NEED = 3;             // the crew eats 3 food a sol; each given to the farm grows 1 food
 const ACT_COST = {eva:0, exercise:1, call:1, rest:0}; // spacesuit has its own battery, so dusty panels never lock you inside
 // GAME RULES (not NASA data, listed on the "Real or game?" screen):
 const INSIDE_SHARE = 0.5;        // thick walls stop storm particles and about half of the everyday cosmic rays
 const EVA_FULL = 60;             // seconds walking outside that count as one whole working day outside
-const DUST_SOL = 0.06, DUST_STORM = 0.2, DUST_MAX = 0.6; // share of sunlight the panels lose per sol (settling dust is real, the numbers are game units)
+const DUST_SOL = 0.08, DUST_STORM = 0.25, DUST_MAX = 0.6; // share of sunlight the panels lose per sol (settling dust is real, the numbers are game units)
 const SAMPLES_GOAL = 3, ACTS_PER_SOL = 2;
+const FIT_DOWN = 1.3, REST_DOWN = 1.2, MOOD_DOWN = 1.8;   // lost each sol without the treadmill / rest / anything cheerful
+// KNOCK-ON EFFECTS (game rules): one weak spot makes the next sol harder, so choices add up.
+const LOW = 4;                                            // below this a factor starts to cause trouble
+const actsToday = () => S && S.f.mood<LOW ? 1 : ACTS_PER_SOL;   // a sad crew only manages one thing
+const isSick = () => S && S.f.well<LOW;                   // ill and tired: no treadmill until they rest
+const isWeak = () => S && S.f.fit<LOW;                    // weak legs: slow walking outside = more radiation
 const MEAL_FOOD = 2, MEAL_MOOD = 1.5;   // GAME RULE: a fresh meal from the greenhouse, once a sol: costs 2 food, cheers the crew up (not an activity)
 const FD='"IM Fell English SC",Georgia,serif', FB='Spectral,Georgia,serif';   // canvas fonts (same as --disp / --body)
 const radIndex = uGy => Math.max(0,Math.min(10,Math.round(10*Math.log(Math.max(uGy,80)/80)/Math.log(1700/80))));  // 0–10: normal day = 1, May 2024 storm = 10
@@ -361,6 +367,11 @@ function morningTalk(){
   if(S.sol===1) return;
   const lowK=Object.keys(S.f).filter(k=>S.f[k]<=2).map(k=>FNAME[k]);
   if(lowK.length) say('alarm',`Danger! <b>${lowK.join(' and ')}</b> is very low. If it reaches zero, the mission ends!`);
+  const knock=[];
+  if(S.f.mood<LOW) knock.push('the crew feels too sad to do much: <b>just one thing</b> today');
+  if(isSick()) knock.push('they feel sick: <b>no treadmill</b> until they rest');
+  if(isWeak()) knock.push('their legs are weak: <b>slow walking</b> outside');
+  if(knock.length) say('worried',`Oh no, ${knock.join(', and ')}.`);
   if(idx>=6) say('alarm',`Radiation outside is <b>${idx}/10</b>! Stay inside today. The thick walls block the storm.`);
   else if(stormWatch() && !S.storms.some(st=>st.sol===S.sol)) say('worried', S.told.watch?`Storm watch again today. The storm could still arrive.`:(S.told.watch=1,`<b>Storm watch.</b> The storm could arrive any moment, or never. Nobody knows, not even Earth. If you go outside, stay close to the airlock!`));
   else if(idx>=3) say('worried',`Radiation outside is <b>${idx}/10</b> today. You can go out, but be quick: the longer you stay, the more you get.`);
@@ -380,17 +391,18 @@ function endSol(){
   const uGy=doseToday(), mSv=uGy*QF/1000;
   S.dose=+(S.dose+mSv).toFixed(3);
   // food
-  const dFood = Math.max(0,Math.min(10,S.food+(a.farm-FARM_NEED)))-S.food;
+  S.coldFarm = a.air<needAir(w) && a.farm>0;   // knock-on: a cold greenhouse grows 1 less food
+  const dFood = Math.max(0,Math.min(10,S.food+(a.farm-FARM_NEED)-(S.coldFarm?1:0)))-S.food;
   S.food=S.food+dFood;
   // the five health factors (Thea's design)
   f.rad = clamp10(10*(1-S.dose/BUDGET));
-  f.fit = clamp10(f.fit + (acts.includes('exercise')?1.5:-1.5));
+  f.fit = clamp10(f.fit + (acts.includes('exercise')?1.5:-FIT_DOWN));
   S.noExercise = acts.includes('exercise')?0:S.noExercise+1;
   const need=needAir(w); f.air = clamp10(f.air + (a.air>=need?1:-2*(need-a.air)));
   const dusty=w[4]==='L', eva=acts.includes('eva');
   // dust: Mars dust is bad to breathe and sticks to spacesuits, so a walk in a dust storm brings it inside
-  f.well = clamp10(f.well + (acts.includes('rest')?1.5:-0.8) + (S.food<=0?-2:S.food<=2?-1:0) + (dusty&&eva?-1:0));
-  f.mood = clamp10(f.mood - 1.5 + (acts.includes('call')?2.5:0) + (eva?1.5:0) + (S.ate?MEAL_MOOD:0) + (dusty?-0.5:0));
+  f.well = clamp10(f.well + (acts.includes('rest')?1.5:-REST_DOWN) + (S.food<=0?-2:S.food<=2?-1:0) + (dusty&&eva?-1:0));
+  f.mood = clamp10(f.mood - MOOD_DOWN + (acts.includes('call')?2.5:0) + (eva?1.5:0) + (S.ate?MEAL_MOOD:0) + (dusty?-0.5:0));
   if(eva && !S.told.radsci){S.told.radsci=1; setTimeout(()=>say('happy',`Space radiation can change brain cells. Scientists tested it on tiny lab-grown pieces of brain. So keep trips outside short!${osd('OSD-999, OSD-1000, OSD-505')}`),1500);}
   S.panelDust=Math.min(DUST_MAX,+((S.panelDust||0)+(dusty?DUST_STORM:DUST_SOL)).toFixed(2));  // dust settles on the panels every sol
   const H=health();
@@ -405,7 +417,8 @@ function endSol(){
 }
 function doAct(k){
   if(S.acts.includes(k)) return toast('You already did that today.');
-  if(S.acts.length>=ACTS_PER_SOL){sfx('no');return toast(`Only ${ACTS_PER_SOL} activities a day. Go to the BUNK to sleep.`);}
+  if(S.acts.length>=actsToday()){sfx('no');return toast(actsToday()<ACTS_PER_SOL?'The crew feels too sad to do more today. Go to the BUNK to sleep.':`Only ${ACTS_PER_SOL} activities a day. Go to the BUNK to sleep.`);}
+  if(k==='exercise' && isSick()){sfx('no');return toast('The crew feels sick. No treadmill until they <b>rest</b>.');}
   if(ACT_COST[k]>0 && used(S.alloc,[...S.acts,k])>available()){sfx('no');return toast('Not enough power left! Turn down the <b>farm</b> or the <b>air &amp; heat</b> on the POWER screen first.');}
   S.acts.push(k); sfx('ok'); updateHUD(); return true;
 }
@@ -463,7 +476,7 @@ function updateHUD(){
   const tube=(frac,col)=>`<span class="tube" style="--c:${col}"><i style="height:${Math.max(0,Math.min(100,frac*100))}%"></i><s></s></span>`;
   const vial=(cls,attrs,inner,val,valCol,icon,label)=>`<div class="vial ${cls}" ${attrs}>${inner}<b class="v"${valCol?` style="color:${valCol}"`:''}>${val}</b><span class="t">${ic(icon)}${label}</span></div>`;
   const tag=(cls,icons,label)=>`<div class="tagw ${cls}">${icons}<span class="t">${label}</span></div>`;
-  const dots=Array.from({length:ACTS_PER_SOL},(_,i)=>`<i class="${i<S.acts.length?'on':''}"></i>`).join('');
+  const dots=Array.from({length:actsToday()},(_,i)=>`<i class="${i<S.acts.length?'on':''}"></i>`).join('');
   const gems=Array.from({length:SAMPLES_GOAL},(_,i)=>`<span class="gem ${i<S.samples?'on':''}">${ic('gem')}</span>`).join('');
   $('hud').innerHTML=`<div class="shelf">
   <div class="dial"><span class="a">SOL</span><b>${Math.min(S.sol,SOLS)}</b><span class="c">/${SOLS}</span><span class="dots" title="Activities done today">${dots}</span></div>
@@ -591,6 +604,7 @@ window.realOrGame=function(){
     'Walls block storms and <b>half</b> of the everyday radiation. Real bases would use thick walls or Mars soil.',
     '<b>1 minute</b> outside counts as a whole day outside.',
     'Storms and weather come from <b>different real dates</b>, mixed into one mission.',
+    'One problem leads to another: a <b>sad</b> crew does only 1 thing a sol, a <b>sick</b> crew cannot use the treadmill, <b>weak legs</b> walk slowly, a <b>cold</b> greenhouse grows less. Real crews feel this too, but our numbers are made up.',
     'Crystals <b>glow</b> and wait near the base. Panels get clean when you walk up to them.',
     'The <b>exact moment</b> a storm arrives during a sol.',
     'A fresh meal from the greenhouse makes the crew <b>happier</b>.',
@@ -732,10 +746,10 @@ function noPowerNote(k){ if(S.acts.includes(k)||ACT_COST[k]<=0||used(S.alloc,[..
   return `<div class="note bad">No power left for this today. Turn down the farm or the air &amp; heat to free 1 power. <button class="btn alt sm" onclick="goPower()">${ic('bolt')}POWER</button></div>`; }
 window.goPower=()=>{ sfx('tick'); openPower(); };
 function openGym(){
-  const done=S.acts.includes('exercise');
+  const done=S.acts.includes('exercise'), sick=isSick()&&!done;
   overlay(`<h2>${ic('run')}TREADMILL</h2><p>Mars gravity is weak, so your muscles and bones get lazy. Running keeps them strong. The harness and bungee cords hold you down while you run.</p>
-  <div class="row"><div class="lbl">${ic('run')}<b>Run on the treadmill</b><small>Stronger muscles and bones · costs 1 power</small></div><button class="btn" ${done?'disabled':''} onclick="act('exercise')">${done?'DONE':'RUN!'}</button></div>
-  ${noPowerNote('exercise')}
+  <div class="row"><div class="lbl">${ic('run')}<b>Run on the treadmill</b><small>Stronger muscles and bones · costs 1 power</small></div><button class="btn" ${done||sick?'disabled':''} onclick="act('exercise')">${done?'DONE':'RUN!'}</button></div>
+  ${sick?'<div class="note bad">The crew feels sick and tired. Rest in the <b>bunk</b> first, then the treadmill opens again.</div>':noPowerNote('exercise')}
   <p><button class="btn alt" onclick="closeOv()">CLOSE</button></p>`);
 }
 function openAirlock(){
@@ -743,17 +757,18 @@ function openAirlock(){
   overlay(`<h2>${ic('door')}AIRLOCK · GO OUTSIDE</h2><p>Put on your spacesuit! Find a yellow crystal ${S.samples}/${SAMPLES_GOAL}${S.panelDust>=.05?' and clean the dusty solar panels':''}.</p>
   <div class="note ${idx>=6?'bad':''}">Radiation outside right now: <b>${idx}/10</b>. ${idx>=6?'Danger! A solar storm is hitting Mars. Better wait for another sol.':idx>=3?'Higher than normal. Be very quick!':'Low. Still, the longer you stay out, the more you get.'}</div>
   ${stormWatch()?'<div class="note bad"><b>Storm watch.</b> A solar storm could arrive while you are out. Stay close to the airlock and run back if the alarm sounds.</div>':''}
+  ${isWeak()?'<div class="note bad">Weak legs from too little exercise: you will walk slowly out there, so you get more radiation.</div>':''}
   ${today()[4]==='L'?'<div class="note">Dust storm outside. Dust sticks to your suit and comes back in with you.</div>':''}
   <div class="row"><div class="lbl">${ic('walk')}<b>Go outside</b><small>Happier crew · a crystal · the suit has its own battery</small></div><button class="btn" ${done?'disabled':''} onclick="act('eva')">${done?'DONE':'GO OUTSIDE'}</button></div>
   <p><button class="btn alt" onclick="closeOv()">CLOSE</button></p>`);
 }
 function openBunk(){
   if(used()>available()){sfx('no');return toast('You are using more power than you have! Fix it at the POWER screen.');}
-  const canRest=!S.acts.includes('rest')&&S.acts.length<ACTS_PER_SOL, a=S.alloc;
+  const canRest=!S.acts.includes('rest')&&S.acts.length<actsToday(), a=S.alloc;
   overlay(`<h2>${ic('bed')}BUNK · SOL ${S.sol}</h2>
   <div class="row"><div class="lbl">${ic('bed')}<b>Take extra rest</b><small>Helps the crew stay healthy · no power needed</small></div><button class="btn" ${canRest?'':'disabled'} onclick="act('rest')">${S.acts.includes('rest')?'RESTED':'REST'}</button></div>
-  <p>Today: ${S.acts.length?S.acts.map(k=>({eva:'outside',exercise:'exercise',call:'family call',rest:'rest'})[k]).join(' · '):'no activities yet'}${S.acts.length<ACTS_PER_SOL?` · you can still do ${ACTS_PER_SOL-S.acts.length} more`:''}</p>
-  ${a.air<needAir(today())?'<div class="note bad">The air &amp; heat machine has less power than tonight needs.</div>':''}
+  <p>Today: ${S.acts.length?S.acts.map(k=>({eva:'outside',exercise:'exercise',call:'family call',rest:'rest'})[k]).join(' · '):'no activities yet'}${S.acts.length<actsToday()?` · you can still do ${actsToday()-S.acts.length} more`:''}</p>
+  ${a.air<needAir(today())?'<div class="note bad">The air &amp; heat machine has less power than tonight needs. A cold greenhouse grows less food too.</div>':''}
   ${a.farm<FARM_NEED?`<div class="note">The farm lights are low: food will drop by ${FARM_NEED-a.farm} tonight.</div>`:''}
   <p><button class="btn" onclick="sleepNow()">${ic('moon')}End sol ${S.sol}</button><button class="btn alt" onclick="closeOv()">NOT YET</button></p>`);
 }
@@ -777,13 +792,19 @@ function showReport({uGy,mSv,src,before,dFood,fail,w,need}){
    <tr><td>${ic('rad')}Radiation</td><td>${d('rad')} ${eva?`outside for ${howLong} (${idx}/10)`:'inside all sol, only a tiny bit'}</td></tr>
    <tr><td>${ic('run')}Exercise</td><td>${d('fit')} ${S.acts.includes('exercise')?'ran':'no exercise'}</td></tr>
    <tr><td>${ic('temp')}Air &amp; heat</td><td>${d('air')} ${S.alloc.air>=need?'warm':'too cold!'}</td></tr>
-   <tr><td>${ic('bed')}Sleep &amp; food</td><td>${d('well')} ${S.acts.includes('rest')?'rested · ':''}food ${S.food}/10 ${dFood>0?'▲':dFood<0?'▼':''}${w[4]==='L'&&eva?' · dust on your suit':''}</td></tr>
+   <tr><td>${ic('bed')}Sleep &amp; food</td><td>${d('well')} ${S.acts.includes('rest')?'rested · ':''}food ${S.food}/10 ${dFood>0?'▲':dFood<0?'▼':''}${S.coldFarm?' · too cold for the plants':''}${w[4]==='L'&&eva?' · dust on your suit':''}</td></tr>
    <tr><td>${ic('smile')}Mood</td><td>${d('mood')} ${S.acts.includes('call')?'called home':eva?'fresh view':S.ate?'tasty meal':'missing home'}</td></tr>
    <tr><td>${ic('panel')}Solar panels</td><td>${S.cleaned?'cleaned today · ':''}dust now blocks ${Math.round((S.panelDust||0)*100)}% of the sunlight</td></tr>
    <tr><td>${ic('sun')}Real Mars weather</td><td>${w[1]}°C at night${w[4]==='L'?' · dust storm':''} · measured on ${fmtDate(w[0])}</td></tr>
-  </table>${real}<p>${btn}</p>`,true);
+  </table>${real}${fail||S.sol>=SOLS?'':knockNote()}<p>${btn}</p>`,true);
   if(real) sfx(eva&&idx>=3?'alarm':'ok'); updateHUD();
 }
+// What today's choices do to tomorrow (the knock-on effects), shown in the sol report.
+function knockNote(){ const t=[];
+  if(S.f.mood<LOW) t.push('The crew is sad, so tomorrow they can do <b>only 1 thing</b>. A call home or a trip outside cheers them up.');
+  if(isSick()) t.push('The crew feels sick, so the <b>treadmill is closed</b> tomorrow. Rest helps.');
+  if(isWeak()) t.push('Weak legs: tomorrow you <b>walk slowly</b> outside. The treadmill helps.');
+  return t.length?`<div class="note bad"><b>Tomorrow:</b> ${t.join(' ')}</div>`:''; }
 window.nextMorning=function(){ S.cleaned=false;
   closeOv(); setDayTime(); morningAlerts(); morningTalk();
   if(S.aftermath){ startSnow(S.aftermath.big?6:3); toast(S.aftermath.big?'Huge radiation spike last night! Cameras are full of "snow", just like Curiosity\'s images on 20 May 2024.':'Radiation spike detected last night.'); S.aftermath=null; }
@@ -1405,7 +1426,7 @@ const EXIT=new THREE.Vector3(0,0,-(R+4.5)), INSIDE_SPOT=new THREE.Vector3(0,1.65
 function spawnCrystal(){
   const g=new THREE.Group(); const m=new THREE.MeshStandardMaterial({color:'#fff2a0',emissive:'#e8b800',emissiveIntensity:1.0,roughness:.25,metalness:0,flatShading:true});
   for(let i=0;i<5;i++){const c=new THREE.Mesh(new THREE.OctahedronGeometry(.18+Math.random()*.12,0),m);c.scale.y=2;c.position.set((Math.random()-.5)*.4,.25,(Math.random()-.5)*.4);c.rotation.set((Math.random()-.5)*.6,Math.random()*3,(Math.random()-.5)*.6);g.add(c);}
-  let x,z; do{const a=Math.random()*Math.PI*2, r=12+Math.random()*16; x=Math.sin(a)*r; z=Math.cos(a)*r;}while(Math.hypot(x-SOLAR_C.x,z-SOLAR_C.z)<9||Math.hypot(x-ROVER_POS.x,z-ROVER_POS.z)<5||OUT_COL.some(c=>Math.hypot(x-c.x,z-c.z)<c.r+2.5));
+  let x,z; do{const a=Math.random()*Math.PI*2, r=S&&S.samples>=1?26+Math.random()*12:12+Math.random()*12; x=Math.sin(a)*r; z=Math.cos(a)*r;}while(Math.hypot(x-SOLAR_C.x,z-SOLAR_C.z)<9||Math.hypot(x-ROVER_POS.x,z-ROVER_POS.z)<5||OUT_COL.some(c=>Math.hypot(x-c.x,z-c.z)<c.r+2.5));
   g.position.set(x,window.__gh(x,z),z); const b=beacon.clone(); b.position.y=6; g.add(b);
   glowSprite('#FFD54A',2.6,0,.45,0,.75,g); glowSprite('#FFF2A0',1.1,0,.45,0,.8,g);   // big friendly glow: easy to spot at dusk
   scene.add(g); return g;}
@@ -1498,7 +1519,7 @@ function step(dt){
   if(ONMARS&&autoHome){ if(mv.lengthSq()>0) autoHome=false; else { const p=camera.position, direct=p.z<=-(R+1);   // walk round the base, then to the airlock
       const tx=direct?EXIT.x:(p.x>=0?1:-1)*(R+3.5), tz=direct?EXIT.z:-(R+2), to=new THREE.Vector3(tx-p.x,0,tz-p.z), d=to.length();
       if(direct&&d<2) enterBase(); else if(d>.01){mv.copy(to.normalize());const ty=Math.atan2(-to.x,-to.z);let dy=ty-yaw;dy=Math.atan2(Math.sin(dy),Math.cos(dy));yaw+=dy*Math.min(1,dt*6);} } }
-  if(mv.lengthSq()>0){mv.normalize().multiplyScalar(dt*(ONMARS?3.4:2.6));camera.position.add(mv);}
+  if(mv.lengthSq()>0){mv.normalize().multiplyScalar(dt*(ONMARS?(isWeak()?2.5:3.4):2.6));camera.position.add(mv);}
   if(ONMARS){stepOutside(dt,mv);return;}
   // collisions: stay inside hab, keep off furniture
   const p=camera.position; const rr=Math.hypot(p.x,p.z); if(rr>R-1.0){p.x*= (R-1.0)/rr; p.z*=(R-1.0)/rr;}

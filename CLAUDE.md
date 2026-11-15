@@ -52,7 +52,7 @@ Syntax check: extract the `<script type="module">` block and run `node --check`.
   Tap the heart chip in the HUD for the health screen (one real fact + source per factor).
 - Trade-offs (the point of the challenge, "no free choice"):
   - Power is solar only (no battery). Clean panels on a mild night cover everything; dust, dust storms and cold nights make it short (do NOT say "never enough", João flagged that as untrue): air & heat, farm lights, treadmill (1), family call (1).
-  - Dust lands on the panels EVERY sol (-6%, -20% in a dust storm, max -60%). Cleaning means going outside = radiation + an activity slot.
+  - Dust lands on the panels EVERY sol (-8%, -25% in a dust storm, max -60%). Cleaning means going outside = radiation + an activity slot.
   - Food: crew eats 3 a sol, each power unit on the farm grows 1. Cutting the farm today costs food tomorrow.
   - Greenhouse (added 15 Nov, Thea): tap it to eat a fresh meal, once a sol, costs 2 food (`MEAL_FOOD`), +1.5 mood (`MEAL_MOOD`, same as going
     outside) and so health. Not an activity; the cost is food, so eating every sol needs more farm power. The farm's power is set only on POWER.
@@ -101,11 +101,15 @@ Syntax check: extract the `<script type="module">` block and run `node --check`.
 ## Key numbers
 - Radiation index: `round(10*ln(max(uGy,80)/80)/ln(1700/80))`, clamped 0–10 (normal day ≈ 1, May 2024 storm = 10).
 - QF 3.05, budget ≈ 7.17 mSv for the 10-sol game (NASA-STD-3001 600 mSv career limit, scaled). Normal Mars day ≈ 115–210 µGy absorbed (Curiosity).
-- Game rules: `INSIDE_SHARE` 0.5, `EVA_FULL` 60 s, `DUST_SOL` 0.06, `DUST_STORM` 0.2, `DUST_MAX` 0.6.
-- SOLAR power by sunlight level {V:11, H:10, M:9, L:7}; farm break-even 3; air needs 3 (+1 below −75 °C, +1 below −85 °C).
-- Per sol: exercise +1.5 / −1.5; rest +1.5 / −0.8; mood −1.5, call +2.5, outside +1.5.
-- Balance check (400 simulated missions each, after the storm-watch change): sensible kid survives ~100%, 3 stars ~82%; never going outside survives ~78%, max 1 star;
-  ignoring the storm alarm survives ~34%; random play ~75%.
+- Game rules: `INSIDE_SHARE` 0.5, `EVA_FULL` 60 s, `DUST_SOL` 0.08, `DUST_STORM` 0.25, `DUST_MAX` 0.6.
+- SOLAR power by sunlight level {V:10, H:9, M:8, L:6}; farm break-even 3; air needs 3 (+1 below −75 °C, +1 below −85 °C).
+- Per sol: exercise +1.5 / −1.3 (`FIT_DOWN`); rest +1.5 / −1.2 (`REST_DOWN`); mood −1.8 (`MOOD_DOWN`), call +2.5, outside +1.5, meal +1.5.
+- Knock-on effects (branch `game-balance`, 15 Nov 2026, plan in `design/game-balance-plan.md`): below `LOW` 4, mood → only 1 activity (`actsToday()`);
+  sleep & food → sick, treadmill closed (`isSick()`); exercise → slow walk outside (`isWeak()`, 2.5 instead of 3.4). Air & heat below need → farm grows 1 less (`S.coldFarm`).
+  Shown in Sojourner's morning line, the treadmill / airlock cards and a "Tomorrow:" note in the sol report. 2nd and 3rd crystals spawn 26–38 m out (1st 12–24 m).
+- Balance check: `python tools/balance_sim.py` (2,000 missions per player type; keep its PHASE1 rules in sync with the game).
+  Old rules: sensible kid 100% survive / 89% 3 stars, never going outside 100%. Now: sensible 82% / 40%, never outside 50% (runs out of air & heat),
+  careless 27%, random 5%. João found the old rules had no impact (15 Nov 2026).
 
 ## Data sources (where the data came from)
 - DONKI: https://ccmc.gsfc.nasa.gov/DONKI-API/get/{FLR,SEP,CMEAnalysis,WSAEnlilSimulations} (60-day max per request).
