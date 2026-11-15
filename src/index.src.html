@@ -548,7 +548,7 @@ window.nextTalk=nextTalk;
 /* ===================== UI: OVERLAYS ===================== */
 let ovModal=false;  // modal cards (title, reports) can't be closed with Escape
 function overlay(html,modal,cls){ freeMouse(); $('card').className='card '+(cls||''); $('card').innerHTML=html; $('card').scrollTop=0; $('ov').classList.remove('hide'); uiOpen=true; ovModal=!!modal; keys={}; }
-function closeOv(){ $('ov').classList.add('hide'); uiOpen=false; grabMouse(); }
+function closeOv(){ $('ov').classList.add('hide'); uiOpen=false; setTimeout(()=>grabMouse(),0); }   // next tick: another card may open right away
 window.closeOv=closeOv;
 
 function titleScreen(){
@@ -1591,7 +1591,7 @@ document.addEventListener('pointerlockerror',()=>{ if(!lockClick||lockOk) return
 function freeMouse(){ if(document.pointerLockElement) document.exitPointerLock(); }
 document.addEventListener('mousemove',e=>{ if(!locked()||uiOpen) return; autoWalk=null;
   yaw-=e.movementX*0.0026; pitch=Math.max(-1.2,Math.min(1.2,pitch-e.movementY*0.0026)); });
-document.addEventListener('pointerlockchange',()=>{ if(locked()) lockOk=true; document.body.classList.toggle('locked',locked()); });
+document.addEventListener('pointerlockchange',()=>{ if(locked()){ lockOk=true; if(uiOpen||!$('night').classList.contains('hide')) freeMouse(); } document.body.classList.toggle('locked',locked()); });
 if(LOCKABLE){ $('help').innerHTML='<b>Move the mouse</b> to look · <b>click</b> to use what is in the middle · <b>Esc</b> shows the mouse · <b>WASD</b> or arrows to walk · hold <b>Z</b> to zoom · <b>V</b> view · <b>M</b> sound · <b>G</b> graphics';
   canvas.style.cursor='pointer'; }
 // touch joystick + binoculars
