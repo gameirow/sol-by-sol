@@ -79,6 +79,12 @@ Syntax check: extract the `<script type="module">` block and run `node --check`.
   first person = through the helmet, gloves held up in front and your body when you look down; third person = camera behind you, whole astronaut.
   `camera.position` is still "where you are" for every rule, collision and debug hook; `viewCam` (set in `updateView()`) is only what gets drawn and
   what clicks are aimed with. The third-person camera pulls in to stay inside the walls, outside the dome and out of the towers. Zooming (Z) always uses first person.
+- Game sound (all WebAudio, no files; `audioStart()`, `audioTick()`, debug `__aud`): starts on the first tap/key. Music = slow magical pad (Dmaj9, Bm11,
+  Gmaj9#11, Asus2) + soft FM bells in a long echo. Storm intensity (`AUD.int`: storm watch .45, dust storm .35, radiation 6+/10 or the alarm 1) swells it
+  into darker chords + low drone + pulse + heartbeat drum. Wind: gusty outside, strong in a dust storm, muffled inside. Footsteps by surface
+  (`footstep`: wood inside, dust outside, stone on the paving plates by the door). Chime when using a station (`interactSnd`), twinkle near a crystal
+  and an arpeggio when you pick it up (`crystalSnd`). The sound button (top right) or M mutes everything (shares `MUTE` with the intro).
+  Game sound stays silent while the intro film plays its own. Claude can't hear: only checked that it runs, makes signal, swells in storms and mutes.
 - Station: bunk, greenhouse/farm, AIR & HEAT generator, treadmill with harness + bungees (low gravity), comms computer, radiation monitor, power screen, airlock. Solar panels + Curiosity model outside.
 - Health wording: "inspired by NASA's space-health research". OSDR facts (checked against the OSDR records on 14 Nov 2026):
   OSD-999/1000 simulated cosmic rays changed human brain organoids; OSD-505 space radiation changed rats' prefrontal cortex;
