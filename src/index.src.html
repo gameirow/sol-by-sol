@@ -843,7 +843,9 @@ function audioStart(){ if(AUD.on) return; try{
   A.noise=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate); {const d=A.noise.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;}
   // wind: a soft rushing band + a thin whistle for the gusts, both muffled by the walls when you are inside
   A.wl=AC.createBiquadFilter(); A.wl.type='lowpass'; A.wl.frequency.value=320; A.wl.connect(A.master);
-  const w=AC.createBufferSource(); w.buffer=A.noise; w.loop=true; A.wf=AC.createBiquadFilter(); A.wf.type='bandpass'; A.wf.frequency.value=500; A.wf.Q.value=.6;
+  // wind uses dark "brown" noise (deep rumble, not the bright hiss that sounds like a shower), through a narrow filter that glides = "whooo"
+  A.brown=AC.createBuffer(1,AC.sampleRate*4,AC.sampleRate); {const d=A.brown.getChannelData(0); let last=0; for(let i=0;i<d.length;i++){last=(last+.02*(Math.random()*2-1))/1.02; d[i]=last*3.5;}}
+  const w=AC.createBufferSource(); w.buffer=A.brown; w.loop=true; A.wf=AC.createBiquadFilter(); A.wf.type='bandpass'; A.wf.frequency.value=320; A.wf.Q.value=2.2;
   A.wg=AC.createGain(); A.wg.gain.value=0; w.connect(A.wf); A.wf.connect(A.wg); A.wg.connect(A.wl); w.start();
   const w2=AC.createBufferSource(); w2.buffer=A.noise; w2.loop=true; w2.playbackRate.value=.7; A.hf=AC.createBiquadFilter(); A.hf.type='bandpass'; A.hf.Q.value=9; A.hf.frequency.value=1300;
   A.hg=AC.createGain(); A.hg.gain.value=0; w2.connect(A.hf); A.hf.connect(A.hg); A.hg.connect(A.wl); w2.start();
@@ -896,9 +898,9 @@ function audioTick(){ const A=AUD; if(!A.on) return; const t=AC.currentTime;
   // wind: gusty outside, strong in a dust storm, only a soft hum through the walls inside
   const L=S&&S.wx?today()[4]:'H', dust=L==='L'?1:L==='M'?.35:0, out=ONMARS;
   const gust=Math.max(.2,.6+.4*Math.sin(t*.37)*Math.sin(t*.13+1)+(Math.random()-.5)*.12);
-  A.wg.gain.setTargetAtTime(out?(.07+.12*dust+.03*k)*gust:.03+.02*dust,t,.6); A.wf.frequency.setTargetAtTime(380+300*gust+450*dust,t,.6);
-  A.hg.gain.setTargetAtTime(out?(.015+.03*dust)*Math.max(0,gust-.55)*2.5:0,t,.8); A.hf.frequency.setTargetAtTime(1100+600*gust,t,.8);
-  A.wl.frequency.setTargetAtTime(out?5000:320,t,.3); }
+  A.wg.gain.setTargetAtTime(out?(.12+.16*dust+.04*k)*gust:.05+.03*dust,t,1.2); A.wf.frequency.setTargetAtTime(220+260*gust+220*dust,t,1.2);   // slow swells, deep
+  A.hg.gain.setTargetAtTime(out?(.004+.01*dust)*Math.max(0,gust-.6)*2.5:0,t,1.2); A.hf.frequency.setTargetAtTime(700+300*gust,t,1.2);      // only a faint whistle in strong gusts
+  A.wl.frequency.setTargetAtTime(out?1100+500*dust:300,t,.3); }
 // footsteps: hollow wood inside, crunchy dust outside, a stony tap on the paving plates by the door
 function footstep(surf){ if(!AUD.on||MUTE) return; const t=AC.currentTime, v=.8+Math.random()*.4, r=.85+Math.random()*.3;
   if(surf==='wood'){ noiseBurst(t,.09,'lowpass',900*r,.8,.32*v,.22); sweep(t,115*r,70,.13,.28*v,'sine',.15); }
