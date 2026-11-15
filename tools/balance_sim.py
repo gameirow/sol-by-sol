@@ -14,9 +14,10 @@ OLD = dict(solar={'V':11,'H':10,'M':9,'L':7}, farm_need=3, inside=.5, eva_full=6
            start=dict(rad=10, fit=7, air=9, well=7, mood=6), food0=7, meal_food=2, meal_mood=1.5,
            fit_up=1.5, fit_down=1.5, rest_up=1.5, rest_down=.8, mood_down=1.5, call=2.5, eva_mood=1.5, air_bad=2,
            fail_h=3, acts=2, low_mood_one_act=False, low_fit_slow=False, sick_no_ex=False, crystal_far=False, rad_stars=False,
-           events=False, cold_farm=False)
+           events=False, cold_farm=False, storm_inside=0, shelter=False, shelter_keep=.25)
 
-PHASE1 = dict(OLD, solar={'V':10,'H':9,'M':8,'L':6}, dust=.08, dust_storm=.25, fit_down=1.3, mood_down=1.8, rest_down=1.2,
+PHASE1 = dict(OLD, solar={'V':10,'H':9,'M':8,'L':6}, dust=.1, dust_storm=.25, dust_max=1.0, fit_down=1.0, mood_down=1.5, rest_down=1.0,
+              storm_inside=.5, shelter=True, shelter_keep=.25,
               crystal_far=True, low_mood_one_act=True, low_fit_slow=True, sick_no_ex=True, cold_farm=True)
 
 def need_air(w): return 3 + (w[1] < -75) + (w[1] < -85)
@@ -30,7 +31,7 @@ def mission(R, player, rng):
         if c not in picked: picked.append(c)
     sols = rng.sample([2,3,4,5,6,7,8], 3); storms = [dict(s=s, sol=sols[i]) for i, s in enumerate(picked)]
     wx = WEATHER[0 if rng.random() < .6 else 1] if rng.random() < .2 else rng.choice(WEATHER[2:])
-    S = dict(sol=1, food=R['food0'], dose=0., samples=0, dust=0., f=dict(R['start']), H=[])
+    S = dict(sol=1, food=R['food0'], dose=0., samples=0, dust=0., f=dict(R['start']), H=[], shelter=False)
     def first(st): return next((i for i, v in enumerate(st['s']['marsDose']) if v - st['s']['base'] >= 25), -1)
     for sol in range(1, SOLS+1):
         S['sol'] = sol; w = wx[sol-1]; f = S['f']
@@ -44,12 +45,15 @@ def mission(R, player, rng):
                     else: old += e
         watch = any(sol >= st['sol'] and sol <= st['sol'] + (first(st) if first(st) >= 0 else 1) for st in storms)
         alert = any(st['sol'] == sol for st in storms)
+        fc = any(st['sol'] == sol and st['s']['forecastHitsMars'] for st in storms)
+        if S['shelter'] and not (watch or old + fresh > 0): S['shelter'] = False   # storm over: bags go back
         idx = radIndex(BG + old)
         solar = round(R['solar'][w[4]] * (1 - S['dust'])); need = need_air(w)
         nacts = 1 if (R['low_mood_one_act'] and f['mood'] < 4) else R['acts']
-        ctx = dict(f=f, idx=idx, watch=watch or alert, solar=solar, need=need, food=S['food'], dust=S['dust'], samples=S['samples'], sol=sol, nacts=nacts, R=R)
+        ctx = dict(fc=fc, shelter=S['shelter'], f=f, idx=idx, watch=watch or alert, solar=solar, need=need, food=S['food'], dust=S['dust'], samples=S['samples'], sol=sol, nacts=nacts, R=R)
         acts, air, farm, meal, eva_s, run_home = player(ctx, rng)
         acts = acts[:nacts]
+        if 'shelter' in acts and R['shelter']: S['shelter'] = True
         if R['sick_no_ex'] and f['well'] < 4 and 'exercise' in acts: acts = [a for a in acts if a != 'exercise']
         # power: activities first, then air, farm gets what is left
         cost = sum(1 for a in acts if a in ('exercise', 'call'))
@@ -68,7 +72,7 @@ def mission(R, player, rng):
             if eva_t >= need_t: S['samples'] += 1
             if eva_t >= 20: S['dust'] = 0
         frac = min(1, eva_t / R['eva_full'])
-        uGy = BG*R['inside'] + frac*(BG*(1-R['inside']) + old) + min(1, storm_t/(R['eva_full']/2))*fresh
+        uGy = BG*R['inside'] + frac*(BG*(1-R['inside']) + old) + min(1, storm_t/(R['eva_full']/2))*fresh + (1-frac)*(old + fresh)*R['storm_inside']*(R['shelter_keep'] if S['shelter'] else 1)
         S['dose'] += uGy*QF/1000
         S['food'] = max(0, min(10, S['food'] + farm - R['farm_need']))
         if R['cold_farm'] and air < need: S['food'] = max(0, S['food'] - 1)
@@ -92,6 +96,7 @@ def sensible(c, rng):
     cand = []
     want_out = c['idx'] < 6 and (c['samples'] < 3 or c['dust'] >= .18)
     if want_out: cand.append(('eva', 3 + (2 if c['dust'] >= .18 else 0)))
+    if R['shelter'] and c['watch'] and not c['shelter']: cand.append(('shelter', 9 if c['fc'] else 4))
     cand += [('exercise', 10 - f['fit']), ('call', 10 - f['mood']), ('rest', 10 - f['well'])]
     cand.sort(key=lambda x: -x[1]); acts = [a for a, _ in cand[:c['nacts']]]
     air = c['need']; farm = max(0, c['solar'] - air - sum(1 for a in acts if a in ('exercise','call')))
@@ -110,7 +115,7 @@ def indoor(c, rng):      # never goes outside
     return acts, air, min(farm, 5), c['food'] >= 5, 0, True
 
 def random_p(c, rng):
-    acts = rng.sample(['eva', 'exercise', 'call', 'rest'], c['nacts'])
+    acts = rng.sample(['eva', 'exercise', 'call', 'rest'] + (['shelter'] if c['R']['shelter'] else []), c['nacts'])
     air = rng.choice([c['need']-1, c['need'], c['need']+1]); farm = rng.randint(1, 5)
     return acts, max(0, air), farm, rng.random() < .5, rng.uniform(15, 60), rng.random() < .5
 

@@ -26,10 +26,12 @@ So the decisions don't *feel* like they matter, because they mostly don't.
 | Rule | Now | New |
 |---|---|---|
 | Sunlight power (very high / high / medium / low) | 11 / 10 / 9 / 7 | 10 / 9 / 8 / 6 |
-| Dust on panels per sol (normal / dust storm) | 6 % / 20 % | 8 % / 25 % |
-| Exercise lost per sol without the treadmill | 1.5 | 1.3 |
-| Mood lost per sol | 1.5 | 1.8 |
-| Sleep & food lost per sol without rest | 0.8 | 1.2 |
+| Dust on panels per sol (normal / dust storm) | 6 % / 20 % | 10 % / 25 % |
+| Most dust on the panels | 60 % | 100 % (never cleaning = no power, like NASA's InSight lander in 2022) |
+| Exercise lost per sol without the treadmill | 1.5 | 1.0 |
+| Mood lost per sol | 1.5 | 1.5 |
+| Sleep & food lost per sol without rest | 0.8 | 1.0 |
+| A solar storm, inside the base | fully blocked | the walls stop half; a **storm shelter** stops most of the rest |
 | Crystals | all near the base | 1st near; 2nd and 3rd farther away (a longer walk = more radiation) |
 
 ### Knock-on effects (one bad thing leads to another)
@@ -44,17 +46,32 @@ Real-world basis (for the "Real or game?" screen): sad or tired crews really get
 in HERA and Mars-500); weak muscles really slow astronauts down after spaceflight (OSD-342); plants really grow
 badly in the cold. The exact numbers stay game rules.
 
-### What the simulator says with Phase 1
+### The storm shelter (radiation shielding as a real choice)
+Real missions do this: on Artemis II the crew would pull bags of supplies out of storage and strap them to the thinnest wall
+of Orion; on Artemis I the shelter spot got about 4 times less radiation than the worst spot. On the Space Station the crew
+moves to the best-shielded module. Shielding is **mass**, not electricity, so the cost is time and work, not power.
+- At the bunk, during a storm watch: **Build a storm shelter** (water and food bags around the bunk) = 1 activity.
+- It stays up until the storm is over. If NASA's forecast was wrong and the storm misses, the activity was wasted.
+- Big real storm of May 2024, staying inside for 3 sols: radiation score 10 → 8.3 with the shelter, 10 → 5.6 without.
+
+### Day and night
+- The sun climbs as you do things: **morning → midday → evening** (the HUD shows which). Midday has the real dusty
+  butterscotch Mars sky; evening is the storybook dusk with the blue sunset.
+- Going to bed: **Night on Mars** card with the real low and high temperature for that sol (Curiosity's weather station),
+  "the panels make no power at night, the batteries keep the heater running", and one true fact (sol length, two moons,
+  blue sunsets, thin air, smaller Sun, 687-day year).
+
+### What the simulator says now
 | Player type | Survives | 3 stars | Health dipped below 5.5 |
 |---|---|---|---|
-| Sensible kid | 82 % | 40 % | 27 % |
-| Never goes outside | 50 % (runs out of air & heat: dusty panels!) | 0 % | – |
-| Careless | 27 % | 12 % | – |
-| Random buttons | 5 % | – | – |
+| Sensible kid | 86 % | 49 % | 35 % |
+| Never goes outside | **0 %** (panels end up covered: no air & heat) | 0 % | – |
+| Careless | 25 % | 21 % | – |
+| Random buttons | 2 % | – | – |
 | Same two things every sol | 0 % | – | – |
 
 - A good player still usually wins, but has to **think every sol**, and 3 stars is an achievement, not a given.
-- Hiding inside is no longer safe: someone **has** to go out and clean the panels. That is the real Mars trade-off.
+- Hiding inside **always** fails: someone has to go out and clean the panels. That is the real Mars trade-off.
 - Bad play snowballs, so the kid feels the cause and effect.
 
 Is 82 % too hard for a 7-year-old? Possibly. That is what Phase 2's **Cadet** level is for.

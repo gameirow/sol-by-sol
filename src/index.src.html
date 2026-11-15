@@ -86,6 +86,10 @@ a{color:var(--accent2)}
 /* ---- floating boards (hints, toasts, help, suit meter) ---- */
 #prompt{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:var(--panel);border:2px solid var(--ink);box-shadow:inset 0 0 0 2px var(--wood-edge),0 0 22px rgba(255,178,91,.22),0 10px 30px rgba(0,0,0,.4);padding:10px 16px;border-radius:6px;font-size:16px;line-height:1.4;display:none;z-index:5;pointer-events:none;max-width:min(560px,92vw);text-align:center}
 #prompt b{color:var(--glow2)}
+#night{position:fixed;left:50%;top:max(12px,env(safe-area-inset-top));transform:translateX(-50%);z-index:30;width:min(560px,calc(100vw - 32px));display:flex;gap:14px;align-items:flex-start;padding:16px 18px}
+#night.hide{display:none}#night h3{font:400 22px/1.1 var(--disp);margin:0 0 6px;color:var(--crimson)}#night p{margin:0 0 8px;font-size:15px}#night .fact{font-style:italic}
+#night .nface svg{width:64px;height:64px}#night .warnc{color:var(--bad)}
+@media (max-width:520px){#night .nface{display:none}#night p{font-size:14px}}
 #help{position:fixed;right:12px;bottom:12px;font-size:13.5px;color:var(--mute);background:rgba(43,30,28,.78);border:1px solid var(--line);padding:7px 12px;border-radius:6px;z-index:5}
 #help b{color:var(--cream);font-weight:600}
 #ticker{position:fixed;right:12px;bottom:50px;max-width:420px;font-size:15px;line-height:1.4;background:var(--panel);border:2px solid var(--ink);border-left:5px solid var(--gold);box-shadow:inset 0 0 0 1.5px var(--wood-edge),0 0 22px rgba(255,178,91,.2),0 10px 30px rgba(0,0,0,.4);padding:10px 14px;border-radius:6px;z-index:25;display:none}
@@ -238,7 +242,7 @@ body.tp #suit{bottom:auto!important;top:122px}   /* third person: keep the suit 
 <div id="fx"></div>
 <div id="cross"></div>
 <div id="hud"></div>
-<div id="prompt"></div>
+<div id="prompt"></div><div id="night" class="card hide"></div>
 <div id="ticker"></div>
 <div id="helmet"></div><div id="suit"></div><button id="backBtn" class="btn" onclick="goInside()">Go inside</button>
 <div id="joy"><div id="knob"></div></div><button id="binoBtn" class="tbtn"></button><button id="viewBtn" onclick="toggleView()" aria-label="Switch view: through your helmet, or see your astronaut" title="Switch view (V)"></button><button id="soundBtn" onclick="toggleMute()" aria-label="Sound on or off" title="Sound (M)"></button>
@@ -279,13 +283,15 @@ const BUDGET = +(600/860*SOLS*1.0275).toFixed(2); // mSv: this mission's share o
 const SOLAR = {V:10,H:9,M:8,L:6};  // per sol from sunlight level (REMS UV sensor). Game units.
 const UVNAME = {V:'Very high',H:'High',M:'Medium',L:'Low (dusty)'};
 const FARM_NEED = 3;             // the crew eats 3 food a sol; each given to the farm grows 1 food
-const ACT_COST = {eva:0, exercise:1, call:1, rest:0}; // spacesuit has its own battery, so dusty panels never lock you inside
+const ACT_COST = {eva:0, exercise:1, call:1, rest:0, shelter:0}; // spacesuit has its own battery, so dusty panels never lock you inside
 // GAME RULES (not NASA data, listed on the "Real or game?" screen):
-const INSIDE_SHARE = 0.5;        // thick walls stop storm particles and about half of the everyday cosmic rays
+const INSIDE_SHARE = 0.5;        // thick walls stop about half of the everyday cosmic rays...
+const STORM_INSIDE = 0.5;        // ...and about half of a solar storm
+const SHELTER_KEEP = 0.25;       // a storm shelter of water and food bags lets through a quarter of that (Artemis I: the shelter got ~4x less than the worst spot)
 const EVA_FULL = 60;             // seconds walking outside that count as one whole working day outside
-const DUST_SOL = 0.08, DUST_STORM = 0.25, DUST_MAX = 0.6; // share of sunlight the panels lose per sol (settling dust is real, the numbers are game units)
+const DUST_SOL = 0.1, DUST_STORM = 0.25, DUST_MAX = 1;   // never cleaning = the panels end up fully covered (NASA's InSight lander lost its power this way in 2022) // share of sunlight the panels lose per sol (settling dust is real, the numbers are game units)
 const SAMPLES_GOAL = 3, ACTS_PER_SOL = 2;
-const FIT_DOWN = 1.3, REST_DOWN = 1.2, MOOD_DOWN = 1.8;   // lost each sol without the treadmill / rest / anything cheerful
+const FIT_DOWN = 1.0, REST_DOWN = 1.0, MOOD_DOWN = 1.5;   // lost each sol without the treadmill / rest / anything cheerful
 // KNOCK-ON EFFECTS (game rules): one weak spot makes the next sol harder, so choices add up.
 const LOW = 4;                                            // below this a factor starts to cause trouble
 const actsToday = () => S && S.f.mood<LOW ? 1 : ACTS_PER_SOL;   // a sad crew only manages one thing
@@ -352,14 +358,16 @@ function stormWatch(){ if(S.arrived) return false;
   return S.storms.some(st=>{ const first=st.s.marsDose.findIndex(v=>v-st.s.base>=25); return S.sol>=st.sol && S.sol<=st.sol+(first>=0?first:1); }); }
 const evaFrac = () => Math.min(1,(S.evaT||0)/EVA_FULL);    // share of the day spent outside
 // Dose = how strong x how long. Inside you still get a share of the everyday cosmic rays; outside you get all of it, plus any storm.
-function doseToday(){ const s=stormNow(); return BG_UGY*INSIDE_SHARE + evaFrac()*(BG_UGY*(1-INSIDE_SHARE)+s.old) + Math.min(1,(S.stormT||0)/(EVA_FULL/2))*s.fresh; }   // a storm is strongest when it first arrives, so slow runners pay double
+function doseToday(){ const s=stormNow(); return BG_UGY*INSIDE_SHARE + evaFrac()*(BG_UGY*(1-INSIDE_SHARE)+s.old) + Math.min(1,(S.stormT||0)/(EVA_FULL/2))*s.fresh
+  + (1-evaFrac())*(s.old+(S.arrived?s.fresh:0))*STORM_INSIDE*(S.shelter?SHELTER_KEEP:1); }   // inside, the walls stop half a storm; the shelter stops most of the rest
+const stormAround = () => stormWatch() || stormNow().old>0;   // a storm is coming or passing: the shelter makes sense   // a storm is strongest when it first arrives, so slow runners pay double
 const osd = ids => `<span class="ref">Source: NASA Open Science Data Repository, ${ids}</span>`;
 function morningAlerts(){
   for(const st of S.storms){
     if(st.sol!==S.sol) continue; const s=st.s, fc=s.forecastHitsMars?'it <b>may hit Mars</b>':'it will <b>probably miss Mars</b>';
     pushMsg({alert:true,title:`SOLAR FLARE ALERT`, body:`The Sun erupted! NASA's forecast: ${fc}. Forecasts can be wrong, so look at the radiation number before you go outside.`, tags:[`Real flare: ${fmtDate(s.flareTime)}`,`Size: ${s.flare.split(' (')[0]}`]});
     sfx('alert'); flashAlarm(2);
-    say('alarm',`Solar flare! Its flash took <b>${orbits(today()[0]).sunMin} minutes</b> to reach Mars. The radiation storm is slower: it can take hours or days. NASA's forecast says ${fc}. <b>Storm watch</b> is on!`);
+    say('alarm',`Solar flare! Its flash took <b>${orbits(today()[0]).sunMin} minutes</b> to reach Mars. The radiation storm is slower: it can take hours or days. NASA's forecast says ${fc}. <b>Storm watch</b> is on! Our walls stop only half a storm. A <b>storm shelter</b> at the bunk stops more.`);
   }
 }
 function morningTalk(){
@@ -372,7 +380,8 @@ function morningTalk(){
   if(isSick()) knock.push('they feel sick: <b>no treadmill</b> until they rest');
   if(isWeak()) knock.push('their legs are weak: <b>slow walking</b> outside');
   if(knock.length) say('worried',`Oh no, ${knock.join(', and ')}.`);
-  if(idx>=6) say('alarm',`Radiation outside is <b>${idx}/10</b>! Stay inside today. The thick walls block the storm.`);
+  if(S.shelterDown){S.shelterDown=false; say('happy',`The storm is over. We put the shelter bags back on the shelves.`);}
+  if(idx>=6) say('alarm',`Radiation outside is <b>${idx}/10</b>! Stay inside today${S.shelter?'. Our storm shelter is up':', and build the <b>storm shelter</b> at the bunk'}.`);
   else if(stormWatch() && !S.storms.some(st=>st.sol===S.sol)) say('worried', S.told.watch?`Storm watch again today. The storm could still arrive.`:(S.told.watch=1,`<b>Storm watch.</b> The storm could arrive any moment, or never. Nobody knows, not even Earth. If you go outside, stay close to the airlock!`));
   else if(idx>=3) say('worried',`Radiation outside is <b>${idx}/10</b> today. You can go out, but be quick: the longer you stay, the more you get.`);
   if(used()>available()) say('worried',`Not enough power for everything today! Go to the <b>POWER</b> screen and choose what to turn down.`);
@@ -414,10 +423,12 @@ function endSol(){
   S.cleaned=false; S.ate=false; S.sol++; S.acts=[]; S.evaT=0; S.arrived=false; S.stormT=0; S.onsetT=null; S.warnT=0;
   if(S.sol>SOLS){S.over=true;return}
   S.alloc.air=Math.max(S.alloc.air,needAir(today()));
+  if(S.shelter && !stormAround()){S.shelter=false; S.shelterDown=true;}   // storm over: the bags go back on the shelves
 }
 function doAct(k){
   if(S.acts.includes(k)) return toast('You already did that today.');
   if(S.acts.length>=actsToday()){sfx('no');return toast(actsToday()<ACTS_PER_SOL?'The crew feels too sad to do more today. Go to the BUNK to sleep.':`Only ${ACTS_PER_SOL} activities a day. Go to the BUNK to sleep.`);}
+  if(k==='shelter' && S.shelter) return toast('The storm shelter is already up.');
   if(k==='exercise' && isSick()){sfx('no');return toast('The crew feels sick. No treadmill until they <b>rest</b>.');}
   if(ACT_COST[k]>0 && used(S.alloc,[...S.acts,k])>available()){sfx('no');return toast('Not enough power left! Turn down the <b>farm</b> or the <b>air &amp; heat</b> on the POWER screen first.');}
   S.acts.push(k); sfx('ok'); updateHUD(); return true;
@@ -486,6 +497,8 @@ function updateHUD(){
   ${vial(idx>=6?'warn':watch?'watch':'','',tube(idx/10,radCol(idx)),`${idx}/10`,radCol(idx),'rad','Outside')}
   <div class="vial gems" title="Crystals found"><span class="gemrow">${gems}</span><b class="v">${S.samples}/${SAMPLES_GOAL}</b></div></div>
   ${S.panelDust>=.05?tag('',`${ic('bolt')}<span class="dust" title="Dusty solar panels"></span>`,'dusty'):''}
+  ${tag('',ic(todOf()>.8?'moon':'sun'),todName())}
+  ${S.shelter?tag('',ic('home'),'Shelter up'):''}
   ${watch?tag('watch',ic('alert'),'Storm watch'):''}
   ${w[4]==='L'?tag('warn',ic('wind'),'Dust storm'):''}
   ${S.read?'':tag('warn',ic('dish'),'New message')}`;
@@ -596,15 +609,18 @@ window.realOrGame=function(){
     '<b>Dust</b> really covers solar panels on Mars.',
     'Warnings from Earth really do arrive <b>minutes late</b>.',
     'Curiosity really found <b>yellow sulfur crystals</b> in 2024.',
+    'Astronauts really build a <b>storm shelter</b> from bags of supplies (Artemis) or hide in the best-shielded room (Space Station).',
+    'A <b>sol</b> really lasts 24 hours 39 minutes, Mars nights really get that cold, and Mars <b>sunsets are blue</b>.',
     'The <b>health facts</b> come from real space studies.'])}</ul></div>
    <div class="tile game"><b>${ic('game')}Game rules (made up)</b><ul>${li([
     'The <b>base</b>. No people live on Mars yet!',
     '<b>Power, food and health points</b> are simple game numbers.',
     'The <b>0 to 10</b> radiation scale. We made it from the real numbers.',
-    'Walls block storms and <b>half</b> of the everyday radiation. Real bases would use thick walls or Mars soil.',
+    'Walls block <b>half</b> of the radiation, and the storm shelter most of the rest. Real bases would use thick walls or Mars soil.',
     '<b>1 minute</b> outside counts as a whole day outside.',
     'Storms and weather come from <b>different real dates</b>, mixed into one mission.',
     'One problem leads to another: a <b>sad</b> crew does only 1 thing a sol, a <b>sick</b> crew cannot use the treadmill, <b>weak legs</b> walk slowly, a <b>cold</b> greenhouse grows less. Real crews feel this too, but our numbers are made up.',
+    'A sol has room for only 2 activities, and the base keeps one sol of power in its batteries.',
     'Crystals <b>glow</b> and wait near the base. Panels get clean when you walk up to them.',
     'The <b>exact moment</b> a storm arrives during a sol.',
     'A fresh meal from the greenhouse makes the crew <b>happier</b>.',
@@ -671,12 +687,13 @@ function openComms(){
 }
 window.back=function(){ if(!S) titleScreen(); else if(S.over) endScreen(S.fail,true); else closeOv(); };
 window.act=function(k){
-  if(!doAct(k)) return;
+  if(!doAct(k)) return; toTod();
   closeOv();
   if(k==='call') callHome();
   if(k==='exercise'){ if(S.told.gym) say('happy',`Great run! Exercise keeps you strong in low gravity.`);
     else {S.told.gym=1; say('happy',`Great run! On Mars you weigh only about a third of your Earth weight. The bungee cords pull you down, so your bones and muscles still work hard. Astronauts on the Space Station run like this too!`);} }
   if(k==='rest') say('happy',`Good rest helps your body stay healthy.`);
+  if(k==='shelter'){S.shelter=true; updateHUD(); say('happy',`Shelter built! Bags of water and food all around the bunk soak up the storm. Astronauts on NASA's Artemis missions build one just like this.`);}
   if(k==='eva') goOutside();
 };
 const REPLIES=['We saw Mars in the night sky and waved at you!','The dog misses you and sleeps on your bed now!','Grandma asks: is the potato farm growing?','We put your rocket drawing on the fridge!','Everyone at school asks about you. We are so proud!'];
@@ -716,7 +733,7 @@ function openRad(){
   overlay(`<h2>${ic('rad')}RADIATION MONITOR</h2>
   <p style="font-size:18px">Outside right now: <b style="font-size:26px;color:${radCol(idx)}">${idx}/10</b> &nbsp;·&nbsp; Inside the base: <b style="color:var(--ok)">very low</b></p>
   <div style="display:flex;gap:3px;margin:8px 0 14px">${seg}</div>
-  <div class="note">Radiation is invisible energy from space. Too much <b>hurts your body</b>. The thick walls block storms and about half of the everyday rays. Outside you get all of it, and the longer you stay out, the more you get. When the Sun has a <b>solar flare</b>, it can jump up to 10/10!</div>
+  <div class="note">Radiation is invisible energy from space. Too much <b>hurts your body</b>. The thick walls block about half of the everyday rays, and half of a storm. A <b>storm shelter</b> at the bunk blocks most of the rest. Outside you get all of it, and the longer you stay out, the more you get. When the Sun has a <b>solar flare</b>, it can jump up to 10/10!</div>
   <p>Radiation your crew has soaked up so far: ${bar(share,fCol(10-share*10))} <b>${Math.round(share*100)}%</b> of the limit for this trip.</p>
   <canvas class="chart" id="rchart" width="700" height="190"></canvas>
   <p style="font-size:12px;opacity:.7">Real numbers measured on Mars by NASA's Curiosity rover, turned into a simple 0–10 scale. The limit comes from NASA's rules for astronauts.</p>
@@ -765,14 +782,32 @@ function openAirlock(){
 function openBunk(){
   if(used()>available()){sfx('no');return toast('You are using more power than you have! Fix it at the POWER screen.');}
   const canRest=!S.acts.includes('rest')&&S.acts.length<actsToday(), a=S.alloc;
+  const shOk=stormAround()&&!S.shelter&&S.acts.length<actsToday();
   overlay(`<h2>${ic('bed')}BUNK · SOL ${S.sol}</h2>
+  <div class="row"><div class="lbl">${ic('home')}<b>Build a storm shelter</b><small>${S.shelter?'Up until the storm is over':stormAround()?'Stack water and food bags around the bunk · blocks most of a solar storm · uses 1 activity':'Only needed when a solar storm is on its way'}</small></div><button class="btn" ${shOk?'':'disabled'} onclick="act('shelter')">${S.shelter?'BUILT':'BUILD'}</button></div>
   <div class="row"><div class="lbl">${ic('bed')}<b>Take extra rest</b><small>Helps the crew stay healthy · no power needed</small></div><button class="btn" ${canRest?'':'disabled'} onclick="act('rest')">${S.acts.includes('rest')?'RESTED':'REST'}</button></div>
-  <p>Today: ${S.acts.length?S.acts.map(k=>({eva:'outside',exercise:'exercise',call:'family call',rest:'rest'})[k]).join(' · '):'no activities yet'}${S.acts.length<actsToday()?` · you can still do ${actsToday()-S.acts.length} more`:''}</p>
+  <p>Today: ${S.acts.length?S.acts.map(k=>({eva:'outside',exercise:'exercise',call:'family call',rest:'rest',shelter:'storm shelter'})[k]).join(' · '):'no activities yet'}${S.acts.length<actsToday()?` · you can still do ${actsToday()-S.acts.length} more`:''}</p>
   ${a.air<needAir(today())?'<div class="note bad">The air &amp; heat machine has less power than tonight needs. A cold greenhouse grows less food too.</div>':''}
   ${a.farm<FARM_NEED?`<div class="note">The farm lights are low: food will drop by ${FARM_NEED-a.farm} tonight.</div>`:''}
   <p><button class="btn" onclick="sleepNow()">${ic('moon')}End sol ${S.sol}</button><button class="btn alt" onclick="closeOv()">NOT YET</button></p>`);
 }
-window.sleepNow=function(){ if(ONMARS) return; closeOv(); yawnSnd(); fadeSleep(()=>{ endSol(); }); };
+window.sleepNow=function(){ if(ONMARS) return; closeOv(); nightFalls(); };
+const NIGHT_FACTS=[
+  'A sol lasts <b>24 hours and 39 minutes</b>. Just a little longer than a day on Earth.',
+  'Look up! Mars has <b>two moons</b>, Phobos and Deimos. Phobos is so fast that it rises in the west and sets in the east.',
+  'Did you see the sunset? Sunsets on Mars are <b>blue</b>! Curiosity took a photo of one right here in Gale crater.',
+  'Mars has very thin air, like a thin blanket. So the heat of the day escapes fast at night.',
+  'From Mars, the Sun looks smaller than from Earth: only about <b>two-thirds</b> as wide. Mars is farther away.',
+  'Mars spins like Earth, so it has day and night. But a year on Mars lasts <b>687</b> Earth days!',
+  'With no city lights, the night sky on Mars is full of stars.'];
+function nightFalls(){ const w=today(), a=S.alloc, need=needAir(w), el=$('night'); TOD.tt=1.08; TOD.nt=1;
+  el.innerHTML=`<div class="nface">${portrait('happy')}</div><div><h3>${ic('moon')}Night on Mars · Sol ${S.sol}</h3>
+   <p>Tonight it gets down to <b>${w[1]}°C</b>. At midday it was ${w[2]}°C.</p>
+   <p>The solar panels make no power at night. The <b>batteries</b> they charged in the day keep the air &amp; heat running.${a.air<need?' <b class="warnc">Not enough for tonight: it will get cold!</b>':''}</p>
+   <p class="fact">${NIGHT_FACTS[(S.sol-1)%NIGHT_FACTS.length]}</p>
+   <button class="btn" onclick="sleepGo()">${ic('bed')}Sleep</button></div>`;
+  el.classList.remove('hide'); sfx('tick'); }
+window.sleepGo=function(){ $('night').classList.add('hide'); yawnSnd(); fadeSleep(()=>{ endSol(); }); };
 
 function showReport({uGy,mSv,src,before,dFood,fail,w,need}){
   const f=S.f, eva=S.acts.includes('eva'), fr=evaFrac(), idx=radIndex(outsideToday()); const d=k=>{const v=f[k]-before[k];return `<b style="color:${v>=0?'var(--ok)':'var(--bad)'}">${v>=0?'▲':'▼'}</b>`;};
@@ -780,7 +815,7 @@ function showReport({uGy,mSv,src,before,dFood,fail,w,need}){
   let real='';
   for(const s of src){const st=s.st.s; if(s.val-st.base<25) continue;
     const first=st.marsDose.findIndex(v=>v-st.base>=25)===s.i;
-    real+=`<div class="note ${(first?S.stormT>0:eva)?'bad':'good'}"><b>${first?'The solar storm hit Mars!':'The solar storm is still passing Mars.'}</b> Radiation outside went up to ${idx}/10. ${first&&!st.forecastHitsMars?'Surprise: the forecast said it would miss! ':''}${first?(S.stormT>0?`It caught you outside for ${S.stormT<8?'a moment':S.stormT<20?'a while':'a long time'}.`:eva?'You were already back inside. Lucky!':'You stayed behind the thick walls. Safe!')+` Earth's warning needed ${orbits(w[0]).min} minutes to arrive, so your own monitor saw it first.`:eva?`You were outside for ${howLong}.`:'You stayed behind the thick walls. Safe!'}</div>`;}
+    real+=`<div class="note ${(first?S.stormT>0:eva)?'bad':'good'}"><b>${first?'The solar storm hit Mars!':'The solar storm is still passing Mars.'}</b> Radiation outside went up to ${idx}/10. ${first&&!st.forecastHitsMars?'Surprise: the forecast said it would miss! ':''}${first?(S.stormT>0?`It caught you outside for ${S.stormT<8?'a moment':S.stormT<20?'a while':'a long time'}.`:eva?'You were already back inside. Lucky!':insideStorm())+` Earth's warning needed ${orbits(w[0]).min} minutes to arrive, so your own monitor saw it first.`:eva?`You were outside for ${howLong}.`:insideStorm()}</div>`;}
   for(const st of S.storms) if(!st.s.hit && S.sol===st.sol+1) real+=`<div class="note good">The solar storm from Sol ${st.sol} <b>missed Mars</b>. ${st.s.forecastHitsMars?'The forecast said it might hit. Forecasts are not perfect!':'Just like the forecast said.'}</div>`;
   const H=health(); let head, btn;
   const WHY={health:"Your crew's health got too low.",rad:'Your crew reached the radiation limit for this trip.',fit:'Muscles and bones got too weak without exercise.',air:'The base got too cold for too long.',well:'The crew got too ill and tired.',mood:'The crew got too lonely and sad.'};
@@ -789,7 +824,7 @@ function showReport({uGy,mSv,src,before,dFood,fail,w,need}){
   overlay(`${head}
   <p style="font:400 26px var(--disp);letter-spacing:.04em;text-transform:uppercase;margin:0 0 6px;color:var(--crimson)">${ic('heart')} Health <b style="color:${fCol(H)}">${H}/10</b></p>
   <table class="rep">
-   <tr><td>${ic('rad')}Radiation</td><td>${d('rad')} ${eva?`outside for ${howLong} (${idx}/10)`:'inside all sol, only a tiny bit'}</td></tr>
+   <tr><td>${ic('rad')}Radiation</td><td>${d('rad')} ${eva?`outside for ${howLong} (${idx}/10)`:src.length?(S.shelter?'inside, in the storm shelter':'inside, but the storm got through the walls'):'inside all sol, only a tiny bit'}</td></tr>
    <tr><td>${ic('run')}Exercise</td><td>${d('fit')} ${S.acts.includes('exercise')?'ran':'no exercise'}</td></tr>
    <tr><td>${ic('temp')}Air &amp; heat</td><td>${d('air')} ${S.alloc.air>=need?'warm':'too cold!'}</td></tr>
    <tr><td>${ic('bed')}Sleep &amp; food</td><td>${d('well')} ${S.acts.includes('rest')?'rested · ':''}food ${S.food}/10 ${dFood>0?'▲':dFood<0?'▼':''}${S.coldFarm?' · too cold for the plants':''}${w[4]==='L'&&eva?' · dust on your suit':''}</td></tr>
@@ -800,6 +835,7 @@ function showReport({uGy,mSv,src,before,dFood,fail,w,need}){
   if(real) sfx(eva&&idx>=3?'alarm':'ok'); updateHUD();
 }
 // What today's choices do to tomorrow (the knock-on effects), shown in the sol report.
+const insideStorm = () => S.shelter?'You were inside, in the <b>storm shelter</b>. It blocked most of the storm!':'You stayed inside. The walls blocked half of the storm. A <b>storm shelter</b> would have blocked more.';
 function knockNote(){ const t=[];
   if(S.f.mood<LOW) t.push('The crew is sad, so tomorrow they can do <b>only 1 thing</b>. A call home or a trip outside cheers them up.');
   if(isSick()) t.push('The crew feels sick, so the <b>treadmill is closed</b> tomorrow. Rest helps.');
@@ -1055,16 +1091,17 @@ function glowSprite(c,size,x,y,z,o=.6,p=scene){SOFT=SOFT||softDot(); const s=new
 
 /* ---- sky: Mars at dusk. Night above, violet and rose, clay at the horizon, stars, and a small blue-white sun
    (Mars sunsets really are bluish). Dust storms turn it murky ochre. ---- */
-const skyU={sunDir:{value:new THREE.Vector3(.3,.2,.8)},dust:{value:0},haze:{value:0}};
+const skyU={sunDir:{value:new THREE.Vector3(.3,.2,.8)},dust:{value:0},haze:{value:0},day:{value:0},night:{value:0}};
 const sky=new THREE.Mesh(new THREE.SphereGeometry(5000,48,24),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,depthTest:false,uniforms:skyU,
  vertexShader:`varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
- fragmentShader:`uniform vec3 sunDir;uniform float dust,haze;varying vec3 vP;
+ fragmentShader:`uniform vec3 sunDir;uniform float dust,haze,day,night;varying vec3 vP;
   float hs(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}
   void main(){vec3 d=normalize(vP);float h=d.y;
   vec3 top=vec3(.102,.094,.188),mid=vec3(.204,.188,.31),low=vec3(.478,.322,.412),hor=vec3(.725,.471,.416);
   vec3 c=mix(hor,low,smoothstep(-.02,.09,h));c=mix(c,mid,smoothstep(.09,.3,h));c=mix(c,top,smoothstep(.3,.8,h));
+  vec3 dc=mix(vec3(.80,.62,.50),vec3(.70,.55,.50),smoothstep(-.02,.15,h));dc=mix(dc,vec3(.50,.40,.45),smoothstep(.15,.85,h));c=mix(c,dc,day);c*=1.-.62*night;
   vec3 q=d*260.,id=floor(q);if(hs(id)>.982){vec3 o=vec3(hs(id+1.),hs(id+2.),hs(id+3.))-.5;
-    c+=vec3(1.,.95,1.)*smoothstep(.17,0.,length(fract(q)-.5-o*.5))*(.5+.8*hs(id+4.))*smoothstep(.12,.45,h)*(1.-haze)*(1.-dust);}
+    c+=vec3(1.,.95,1.)*smoothstep(.17,0.,length(fract(q)-.5-o*.5))*(.5+.8*hs(id+4.))*smoothstep(.12,.45,h)*(1.-haze)*(1.-dust)*(1.-day)*(1.+.8*night);}
   c+=vec3(.85,.8,.95)*smoothstep(.99982,.99992,dot(d,normalize(vec3(.45,.5,-.74))))*(1.-dust);     // Phobos
   c+=vec3(.85,.8,.95)*.8*smoothstep(.99994,.99997,dot(d,normalize(vec3(-.6,.62,-.5))))*(1.-dust);  // Deimos
   float s=max(dot(d,normalize(sunDir)),0.);
@@ -1328,12 +1365,27 @@ function wrap(g,text,x,y,w,lh,maxL){const words=text.split(' ');let line='',n=0;
 // clear = warm glows dominate · hazy = more fog and mist, softer light, fewer stars · dust storm = thick ochre fog, dim, lots of dust.
 const LOOK={V:{fog:.00002,sun:1.9,hemi:.95,d:0,hz:0,fc:'#6E4F6A',mist:.09,mc:'#C8A8C8'},H:{fog:.000024,sun:1.75,hemi:.9,d:0,hz:.15,fc:'#6E4F6A',mist:.11,mc:'#C8A8C8'},
   M:{fog:.00003,sun:1.05,hemi:.85,d:.12,hz:.8,fc:'#8A6C80',mist:.32,mc:'#D8C0D2'},L:{fog:.0042,sun:.7,hemi:.62,d:1,hz:0,fc:'#7A5636',mist:.26,mc:'#B08860'}};
-function setDayTime(){
-  const sol=S?S.sol:1, az=0.35+sol*0.22, el=0.14+0.05*Math.sin(sol);   // a low sun, just above the horizon
+// DAY AND NIGHT: the sun climbs through the sol as you do things (morning, midday, evening = Thea's dusk look),
+// and night falls when you go to bed. tod 0 = sunrise, .5 = noon, 1 = sunset; night 0..1. The sky is dusty butterscotch by day (real Mars).
+let curLook=LOOK.H; const TOD={t:.92,tt:.92,n:0,nt:0}, DAYSUN=new THREE.Color('#FFE6CC');
+const todOf = () => !S||!S.wx ? .92 : S.acts.length===0 ? .15 : S.acts.length>=actsToday() ? .9 : .5;
+const todName = () => ({.15:'Morning',.5:'Midday',.9:'Evening'})[todOf()]||'Evening';
+function applyTod(){ const k=curLook, sol=S?S.sol:1, t=TOD.t, n=TOD.n;
+  const az=0.35+sol*0.22+(t-.9)*2.4, el=t>1?-.25:Math.max(.12,Math.sin(Math.PI*t)*.95+0.05*Math.sin(sol));
   const d=new THREE.Vector3(Math.sin(az)*Math.cos(el),Math.sin(el),Math.cos(az)*Math.cos(el));
+  const day=.8*Math.min(1,Math.max(0,(el-.18)/.5))*(1-n);
   skyU.sunDir.value.copy(d); sun.position.copy(sun.target.position).addScaledVector(d,180);
-  const k=LOOK[S&&S.wx?today()[4]:'H']||LOOK.H;
-  scene.fog.density=k.fog; scene.fog.color.set(k.fc); sun.intensity=k.sun; hemi.intensity=k.hemi; skyU.dust.value=k.d; skyU.haze.value=k.hz;
+  skyU.day.value=day*(1-k.d); skyU.night.value=n;
+  sun.intensity=k.sun*(1+.15*day)*(1-.92*n); hemi.intensity=k.hemi*(1-.1*day)*(1-.55*n);   // keep the cosy inside: day shows mostly in the sky and the sunlight
+  sun.color.set('#FFB08A').lerp(DAYSUN,day); }
+function tickTod(dt){ if(Math.abs(TOD.t-TOD.tt)<.002&&Math.abs(TOD.n-TOD.nt)<.002) return;
+  const r=Math.min(1,dt*.7); TOD.t+=(TOD.tt-TOD.t)*r; TOD.n+=(TOD.nt-TOD.n)*r; applyTod(); }
+const toTod = () => { TOD.tt=todOf(); };
+window.__tod=(t,n)=>{TOD.t=TOD.tt=t;TOD.n=TOD.nt=n||0;applyTod();};   // debug: jump to a time of sol
+function setDayTime(){
+  const k=LOOK[S&&S.wx?today()[4]:'H']||LOOK.H; curLook=k;
+  TOD.t=TOD.tt=todOf(); TOD.n=TOD.nt=0;
+  scene.fog.density=k.fog; scene.fog.color.set(k.fc); skyU.dust.value=k.d; skyU.haze.value=k.hz; applyTod();
   OUT.dust.material.opacity=.35+.45*k.d; OUT.dust.material.size=.35+.5*k.d;
   OUT.embers.material.opacity=.8*(1-.65*k.d)*(1-.3*k.hz);
   OUT.mists.forEach(m=>{m.material.opacity=k.mist;m.material.color.set(k.mc);});
@@ -1776,7 +1828,7 @@ function updateView(dt){
 
 /* ===================== LOOP ===================== */
 const clock=new THREE.Clock(); let screenT=0, fpsAcc=0, fpsN=0, fpsCheck=false;
-function loop(){const dt=Math.min(.05,clock.getDelta()),t=clock.elapsedTime;if(INTRO)introTick(dt);else{step(dt);camera.rotation.set(pitch,yaw,0);} effects(dt,t);
+function loop(){const dt=Math.min(.05,clock.getDelta()),t=clock.elapsedTime;if(INTRO)introTick(dt);else{step(dt);camera.rotation.set(pitch,yaw,0);tickTod(dt);} effects(dt,t);
   const tf=zoom?12:70; if(Math.abs(camera.fov-tf)>.1){camera.fov+=(tf-camera.fov)*Math.min(1,dt*8);camera.updateProjectionMatrix();}
   const cap=sightCaption(); if(cap){const pr=$('prompt');pr.style.display='block';pr.innerHTML=cap.t;}
   screenT+=dt;if(screenT>.5&&S){screenT=0;drawScreens();}

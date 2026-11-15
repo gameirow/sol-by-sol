@@ -51,8 +51,8 @@ Syntax check: extract the `<script type="module">` block and run `node --check`.
 - Health /10 = average of 5 factors: radiation, exercise, air & heat, sleep & food, mood. Game over if health < 3 OR any one factor reaches 0.
   Tap the heart chip in the HUD for the health screen (one real fact + source per factor).
 - Trade-offs (the point of the challenge, "no free choice"):
-  - Power is solar only (no battery). Clean panels on a mild night cover everything; dust, dust storms and cold nights make it short (do NOT say "never enough", João flagged that as untrue): air & heat, farm lights, treadmill (1), family call (1).
-  - Dust lands on the panels EVERY sol (-8%, -25% in a dust storm, max -60%). Cleaning means going outside = radiation + an activity slot.
+  - Power is solar only; the batteries hold one sol's charge for the night (no saving up between sols). Clean panels on a mild night cover everything; dust, dust storms and cold nights make it short (do NOT say "never enough", João flagged that as untrue): air & heat, farm lights, treadmill (1), family call (1).
+  - Dust lands on the panels EVERY sol (-10%, -25% in a dust storm, up to fully covered: never cleaning always ends in no power, like NASA's InSight in 2022). Cleaning means going outside = radiation + an activity slot.
   - Food: crew eats 3 a sol, each power unit on the farm grows 1. Cutting the farm today costs food tomorrow.
   - Greenhouse (added 15 Nov, Thea): tap it to eat a fresh meal, once a sol, costs 2 food (`MEAL_FOOD`), +1.5 mood (`MEAL_MOOD`, same as going
     outside) and so health. Not an activity; the cost is food, so eating every sol needs more farm power. The farm's power is set only on POWER.
@@ -101,15 +101,19 @@ Syntax check: extract the `<script type="module">` block and run `node --check`.
 ## Key numbers
 - Radiation index: `round(10*ln(max(uGy,80)/80)/ln(1700/80))`, clamped 0–10 (normal day ≈ 1, May 2024 storm = 10).
 - QF 3.05, budget ≈ 7.17 mSv for the 10-sol game (NASA-STD-3001 600 mSv career limit, scaled). Normal Mars day ≈ 115–210 µGy absorbed (Curiosity).
-- Game rules: `INSIDE_SHARE` 0.5, `EVA_FULL` 60 s, `DUST_SOL` 0.08, `DUST_STORM` 0.25, `DUST_MAX` 0.6.
+- Game rules: `INSIDE_SHARE` 0.5, `EVA_FULL` 60 s, `DUST_SOL` 0.1, `DUST_STORM` 0.25, `DUST_MAX` 1. `STORM_INSIDE` 0.5 (walls stop half a storm), `SHELTER_KEEP` 0.25.
 - SOLAR power by sunlight level {V:10, H:9, M:8, L:6}; farm break-even 3; air needs 3 (+1 below −75 °C, +1 below −85 °C).
-- Per sol: exercise +1.5 / −1.3 (`FIT_DOWN`); rest +1.5 / −1.2 (`REST_DOWN`); mood −1.8 (`MOOD_DOWN`), call +2.5, outside +1.5, meal +1.5.
+- Per sol: exercise +1.5 / −1.0 (`FIT_DOWN`); rest +1.5 / −1.0 (`REST_DOWN`); mood −1.5 (`MOOD_DOWN`), call +2.5, outside +1.5, meal +1.5.
+- Storm shelter (activity `shelter` at the bunk, only during storm watch or a passing storm): stays up until the storm is over (`S.shelter`, `stormAround()`).
+  Inside without it you get half the storm; with it a quarter of that (Artemis I: the Orion shelter got ~4x less). Real: Artemis crews build one from stowage bags; ISS crews move to the best-shielded module.
+- Day and night (`TOD`, `todOf()`, `applyTod()`, `nightFalls()`, debug `__tod(t,night)`): morning → midday → evening as activities are done (evening = Thea's dusk look);
+  midday sky is dusty butterscotch. Going to bed shows a "Night on Mars" card (real min/max temperature, batteries run the heater, one true fact from `NIGHT_FACTS`), then the report.
 - Knock-on effects (branch `game-balance`, 15 Nov 2026, plan in `design/game-balance-plan.md`): below `LOW` 4, mood → only 1 activity (`actsToday()`);
   sleep & food → sick, treadmill closed (`isSick()`); exercise → slow walk outside (`isWeak()`, 2.5 instead of 3.4). Air & heat below need → farm grows 1 less (`S.coldFarm`).
   Shown in Sojourner's morning line, the treadmill / airlock cards and a "Tomorrow:" note in the sol report. 2nd and 3rd crystals spawn 26–38 m out (1st 12–24 m).
 - Balance check: `python tools/balance_sim.py` (2,000 missions per player type; keep its PHASE1 rules in sync with the game).
-  Old rules: sensible kid 100% survive / 89% 3 stars, never going outside 100%. Now: sensible 82% / 40%, never outside 50% (runs out of air & heat),
-  careless 27%, random 5%. João found the old rules had no impact (15 Nov 2026).
+  Old rules: sensible kid 100% survive / 89% 3 stars, never going outside 100%. Now: sensible 86% / 49%, never outside 0% (runs out of air & heat),
+  careless 25%, random 2%. A sensible kid who never builds the shelter takes ~40% more radiation. João found the old rules had no impact (15 Nov 2026).
 
 ## Data sources (where the data came from)
 - DONKI: https://ccmc.gsfc.nasa.gov/DONKI-API/get/{FLR,SEP,CMEAnalysis,WSAEnlilSimulations} (60-day max per request).
