@@ -6,10 +6,11 @@ Only the lines below are sent to the voice service.
     pip install edge-tts
     python tools/make_voice.py                  # default voice
     python tools/make_voice.py en-GB-SoniaNeural   # try another voice
+    python tools/make_voice.py en-US-EmmaMultilingualNeural launch   # remake only one clip
     python build.py
 
 To use your own recordings instead, save them as assets/voice/0.mp3, 1.mp3, 2.mp3, 4.mp3, 5.mp3, 6.mp3
-(the numbers are the intro shots; shot 3 has no words).
+plus launch.mp3 (the countdown). The numbers are the captions in order; the flyover has no words.
 If you change a caption in SHOTS (src/index.src.html), change the line here too.
 """
 import asyncio, pathlib, sys
@@ -20,6 +21,7 @@ RATE, PITCH = "+4%", "+3Hz"                                                     
 
 # Same words as the speech bubbles, written the way they should be said.
 LINES = {
+    "launch": "Three... two... one... Lift-off!",
     0: "Hi, I'm Sojourner! We're flying to Mars! It's so far away that a radio call home takes up to twenty-two minutes. So on Mars... you decide.",
     1: "Whoa, watch out! Sometimes the Sun throws out a radiation storm. You can't see it, and you can't feel it. Only thick walls keep you safe.",
     2: "Here we are: Gale crater, on Mars! NASA's rover Curiosity has measured the weather and radiation here since 2012. And this game uses its real numbers!",
@@ -31,7 +33,9 @@ LINES = {
 async def main():
     out = pathlib.Path(__file__).resolve().parent.parent / "assets" / "voice"
     out.mkdir(parents=True, exist_ok=True)
+    only = sys.argv[2:]                           # e.g. python tools/make_voice.py <voice> launch   -> only that clip
     for shot, text in LINES.items():
+        if only and str(shot) not in only: continue
         f = out / f"{shot}.mp3"
         await edge_tts.Communicate(text, VOICE, rate=RATE, pitch=PITCH).save(str(f))
         print(f"{f.name}  {f.stat().st_size // 1024} KB  {text[:50]}...")
