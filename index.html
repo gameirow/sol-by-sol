@@ -99,6 +99,10 @@ a{color:var(--accent2)}
 /* ---- parchment cards ---- */
 .ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 40%,rgba(26,24,48,.42),rgba(14,10,20,.86));z-index:20;padding:16px}
 .ov.hide{display:none}
+#cineTap{position:absolute;left:50%;top:calc(7vh + 14px);transform:translateX(-50%);z-index:6;font-size:19px;padding:12px 22px;animation:tapPulse 1.6s ease-in-out infinite}
+#cineTap.hide{display:none}
+@keyframes tapPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,200,110,.55)}50%{box-shadow:0 0 0 12px rgba(255,200,110,0)}}
+@media (max-width:700px){#cineTap{top:calc(7vh + 84px);font-size:17px}}
 .card{--text:var(--parch-ink);--mute:var(--parch-mute);--ok:#275C31;--warnc:#7A4E06;--bad:#A12F3C;--accent:var(--crimson);--accent2:var(--brass-dark);--info:#3E3A78;--soft:rgba(255,250,235,.38);--line:rgba(43,30,26,.24);--line2:rgba(43,30,26,.45);
   background:var(--parch);color:var(--parch-ink);border:3px solid var(--ink);border-radius:5px;box-shadow:inset 0 0 0 6px var(--parch-edge),inset 0 0 60px rgba(122,82,60,.2),0 0 34px rgba(255,178,91,.3),0 30px 80px rgba(0,0,0,.55);max-width:760px;width:100%;max-height:92dvh;overflow:auto;padding:26px 30px;overflow-wrap:anywhere;scrollbar-width:thin;scrollbar-color:#8A6A4A88 transparent}
 .card :focus-visible,.bub :focus-visible{outline-color:var(--crimson)}
@@ -250,7 +254,7 @@ body.tp #suit{bottom:auto!important;top:122px}   /* third person: keep the suit 
 <div id="help"><b>Drag</b> to look · <b>WASD</b> or arrows to walk · <b>E</b> or click a screen to use it · hold <b>Z</b> to zoom · <b>V</b> view · <b>M</b> sound · <b>G</b> graphics</div>
 <div id="narr" class="hide"><div id="narrFace"></div><div class="bub"><div class="who">SOJOURNER</div><div id="narrText"></div><button class="btn sm" id="narrNext" onclick="nextTalk()">Got it</button></div></div>
 <div id="cine" class="hide"><div id="cineFade"></div><div class="lb" style="top:0"></div><div class="lb" style="bottom:0"></div>
- <div id="cineNote">Sizes and distances not to scale</div><div id="cineTop"><button id="cineMute" class="btn alt sm" onclick="toggleMute()">Sound on</button><button id="cineSkip" class="btn alt sm" onclick="endIntro()">Skip intro</button></div>
+ <button id="cineTap" class="btn hide" aria-label="Tap for sound"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>Tap for sound</button><div id="cineNote">Sizes and distances not to scale</div><div id="cineTop"><button id="cineMute" class="btn alt sm" onclick="toggleMute()">Sound on</button><button id="cineSkip" class="btn alt sm" onclick="endIntro()">Skip intro</button></div>
  <div id="cineCap"><div id="cineFace"></div><div class="bub"><div class="who">SOJOURNER</div><div id="cineText"></div><div id="cineRow"><div id="cineDots"></div><button id="cineNext" class="btn sm" onclick="nextPart()">Next</button></div></div></div></div>
 <div id="ov" class="ov"><div class="card hero" id="card"><div class="kicker">Mars outpost mission</div><h1 class="title">Sol <span>by</span> Sol</h1><p class="lead">Flying to Mars…</p><p id="slow" style="display:none">Still loading… This game needs an internet connection and a modern browser (Chrome, Edge, Safari or Firefox).</p></div></div>
 <script>setTimeout(function(){var s=document.getElementById('slow');if(s&&!window.__ready)s.style.display='block';},9000);</script>
@@ -1946,7 +1950,7 @@ function bed(type,freq,gain,bump){ if(!IA) return; const t=AC.currentTime; IA.nf
 function chime(){ if(MUTE||!IA) return; const t=AC.currentTime; [[880,0],[1318.5,.09]].forEach(([f,at])=>{const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.05,t+at);g.gain.exponentialRampToValueAtTime(.0001,t+at+.45);o.connect(g);g.connect(IA.master);o.start(t+at);o.stop(t+at+.5);}); }
 function setMute(m){ MUTE=m; if(IA) IA.master.gain.setTargetAtTime(m?0:1,AC.currentTime,.05); if(m)stopVoice();
   $('cineMute').innerHTML=ic(m?'mute':'vol')+(m?'Sound off':'Sound on'); }
-window.toggleMute=()=>setMute(!MUTE);
+window.toggleMute=()=>{ if(performance.now()-unlockT<500) return; setMute(!MUTE); };
 function enterShot(){const I=INTRO,s=SHOTS[I.i]; I.said=0; I.aim=0;
   if(s.world==='ksc'){if(!introSet.ksc)introSet.ksc=buildKSC(); introSet.ksc.reset();}
   rpass.scene=s.world==='ksc'?introSet.ksc.sc:s.world==='space'?introSet.sc:scene; rpass.camera=s.world==='mars'?viewCam:introCam;   // on Mars: Thea's view camera (first person during the film)
@@ -1959,13 +1963,16 @@ function enterShot(){const I=INTRO,s=SHOTS[I.i]; I.said=0; I.aim=0;
   const parts=SHOTS.filter(x=>x.cap), pi=parts.indexOf(SHOTS.slice(0,I.i+1).reverse().find(x=>x.cap));
   $('cineDots').innerHTML=parts.map((x,i)=>`<i class="${i<=pi?'on':''}"></i>`).join('');
   $('cineNext').innerHTML=(pi>=parts.length-1?'Start':'Next')+ic('next');}
-// First visit: a start card. It is also the tap that lets the browser play sound.
-function introGate(){
-  overlay(`<div class="kicker">Mars outpost mission · ages 7 to 12</div><h1 class="title">Sol <span>by</span> Sol</h1>
-  <p class="lead">First, a one-minute film about your trip to Mars. It tells you what you need to know for the mission.</p>
-  <p style="margin-top:18px"><button class="btn" onclick="startIntro()">${ic('play')}Watch the film</button><button class="btn alt" onclick="skipIntro()">Skip to the game</button></p>
-  <p class="fine">The film has music and a voice. You can turn the sound off or skip any part.</p>`,true,'hero');
-}
+// First visit: the film starts by itself. Browsers only allow sound after the first tap or click, so if the sound is
+// still locked it plays quietly with a big "Tap for sound" button; the first tap anywhere turns the sound on and replays
+// Sojourner's current line. The captions can be read all along.
+let soundLocked=false, unlockT=0;
+function autoIntro(){ startIntro(); setTimeout(()=>{ if(INTRO&&AC&&AC.state!=='running'){ soundLocked=true; $('cineTap').classList.remove('hide'); } },350); }
+function unlockSound(){ if(!soundLocked) return; soundLocked=false; unlockT=performance.now(); $('cineTap').classList.add('hide');
+  try{ if(AC&&AC.resume) AC.resume(); }catch(e){}
+  const I=INTRO; if(!I||MUTE) return; let j=I.i; while(j>=0&&!SHOTS[j].vo) j--;
+  if(j>=0&&SHOTS[j].vo!=='launch'&&(SHOTS[j].voAt==null||j<I.i||I.t>=SHOTS[j].voAt)){ I.said=1; speak(SHOTS[j].vo); } }
+addEventListener('pointerdown',unlockSound,true); addEventListener('keydown',unlockSound,true);
 const markSeen=()=>{try{localStorage.setItem('solbysol_intro','1');}catch(e){}};
 window.skipIntro=()=>{markSeen();titleScreen();};
 function startIntro(){
@@ -2075,7 +2082,7 @@ addEventListener('keydown',e=>{const k=e.key.toLowerCase();
   if(k==='g'){Q=Q==='high'?'low':'high';applyQuality();toast(Q==='high'?'High graphics':'Fast graphics');}});
 applyQuality(); S={sol:1,food:4,dose:0,samples:0,battery:0,f:{rad:10,fit:8,air:9,well:8,mood:7},acts:[],alloc:{air:3,farm:3},storms:[],days:[],msgs:[],read:true,wx:WEATHER[2]}; S0();
 window.startFps=()=>{fpsCheck=true;fpsAcc=0;fpsN=0;};
-function S0(){setDayTime(); drawScreens(); S=null; window.__ready=true; if(seenIntro()) titleScreen(); else introGate(); loop(); if(document.fonts)Promise.all([document.fonts.load('60px "IM Fell English SC"'),document.fonts.load('600 13px Spectral')]).catch(()=>{}).then(()=>{labelDraws.forEach(f=>f());if(S)drawScreens();});}
+function S0(){setDayTime(); drawScreens(); S=null; window.__ready=true; if(seenIntro()) titleScreen(); else autoIntro(); loop(); if(document.fonts)Promise.all([document.fonts.load('60px "IM Fell English SC"'),document.fonts.load('600 13px Spectral')]).catch(()=>{}).then(()=>{labelDraws.forEach(f=>f());if(S)drawScreens();});}
 </script>
 </body>
 </html>
