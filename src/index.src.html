@@ -73,6 +73,7 @@ a{color:var(--accent2)}
 .mini i{position:absolute;left:0;right:0;bottom:0;opacity:.45}
 .mini .ic{width:12px;height:12px;position:relative;color:var(--cream)}
 .gemrow{display:flex;gap:2px;height:52px;align-items:center}
+.gem{display:flex;line-height:0}
 .gem .ic{width:17px;height:17px;color:rgba(217,185,140,.45)}
 .gem.on .ic{color:var(--glow2);filter:drop-shadow(0 0 5px var(--glow))}
 .tagw{display:flex;align-items:center;gap:6px;min-height:34px;padding:5px 11px;background:var(--panel);border:2px solid var(--ink);border-radius:5px;box-shadow:inset 0 0 0 1.5px var(--wood-edge),0 6px 16px rgba(0,0,0,.35);font:15px/1 var(--disp);letter-spacing:.04em;color:var(--cream)}
@@ -1141,7 +1142,7 @@ function setDayTime(){
   OUT.dust.material.opacity=.35+.45*k.d; OUT.dust.material.size=.35+.5*k.d;
   OUT.embers.material.opacity=.8*(1-.65*k.d)*(1-.3*k.hz);
   OUT.mists.forEach(m=>{m.material.opacity=k.mist;m.material.color.set(k.mc);});
-  extDim=1-.45*k.d; extGlow.forEach(o=>o.material.opacity=o.userData.o*extDim); doorL.intensity=10*extDim;
+  extDim=1-.45*k.d; extGlow.forEach(o=>o.material.opacity=o.userData.o*extDim); doorL.intensity=25*extDim; if(lanternL)lanternL.intensity=14*extDim;
 }
 
 /* ===================== OUTSIDE (walk on Mars) ===================== */
@@ -1152,48 +1153,95 @@ function drawPlates(g,w,h){const P=['#7C6A6E','#6B5A63','#8A7672','#5C4D58','#95
   for(let i=0;i<5;i++){const x=Math.random()*w*.8,y=Math.random()*h*.8,pw=24+Math.random()*30,ph=18+Math.random()*24;g.save();g.translate(x,y);g.rotate((Math.random()-.5)*.3);
     g.fillStyle=P[i%6];g.fillRect(0,0,pw,ph);g.strokeStyle='#2B2233';g.lineWidth=2;g.setLineDash([4,3]);g.strokeRect(3,3,pw-6,ph-6);g.restore();}
   g.setLineDash([]);}
-const extTex=canvasTex(256,256,(g,w,h)=>{drawPlates(g,w,h);g.fillStyle='#C79A5A';g.fillRect(0,h*.84,w,8);},{repeat:[-8,1]});
-const extM=new THREE.MeshStandardMaterial({map:extTex,roughness:.82,metalness:.12});
-const shell=add(new THREE.Mesh(new THREE.CylinderGeometry(R+.2,R+.2,HH+.25,SEG-2,1,true,GAPA/2,Math.PI*2-GAPA),extM)); shell.position.y=(HH+.25)/2; shell.castShadow=true;
-const dome=add(new THREE.Mesh(new THREE.SphereGeometry(R+.2,SEG,6,0,Math.PI*2,0,Math.PI/2),extM)); dome.scale.y=.32; dome.position.y=HH+.2; dome.castShadow=true;
-const foot=add(new THREE.Mesh(new THREE.CylinderGeometry(R+.5,R+.7,.35,SEG,1,true),darkM)); foot.position.y=.12;
-const tunnel=new THREE.Group(); tunnel.position.set(0,0,-(R+.9)); scene.add(tunnel);
-box(2.0,2.7,1.6,extM,0,1.35,0,tunnel).castShadow=true; box(2.1,.25,1.7,brassM,0,2.75,0,tunnel);
-// the airlock door glows warm like a lit doorway; its little green light stays (Sojourner calls the airlock "the green light")
-const odoor=box(1.2,2.1,.08,hdr('#FFD9A0',1.5),0,1.1,-.81,tunnel); box(.16,.2,.04,hdr('#4dff88',2.5),.75,1.3,-.83,tunnel);
-box(1.4,.12,.14,brassM,0,2.2,-.83,tunnel); box(.12,2.2,.14,brassM,-.66,1.1,-.83,tunnel); box(.12,2.2,.14,brassM,.66,1.1,-.83,tunnel);
-const extGlow=[]; let extDim=1; const bulbs=[];
+/* ---- the shelter, outside: a round patched dome like the storybook demo ----
+   Inside is a 12-sided room (walls HH high), so outside is a short patched wall with a tall round dome over it.
+   All outside pieces are one-sided or sit outside the walls, so you never see them from inside. */
+const extGlow=[]; let extDim=1; const bulbs=[], OUT_COL=[];
 const eg=(c,s,x,y,z,o,p)=>{const g=glowSprite(c,s,x,y,z,o,p);g.userData.o=o;extGlow.push(g);return g;};
-const doorL=new THREE.PointLight('#FFB25B',10,7,2); doorL.position.set(0,1.7,-1.9); tunnel.add(doorL);
-eg('#FFB25B',4.5,0,1.2,-1.1,.5,tunnel);
-// brass bands round the hab
-for(const y of [.42,HH+.18]){const b=add(new THREE.Mesh(new THREE.TorusGeometry(R+.24,.07,6,48),brassM)); b.rotation.x=Math.PI/2; b.position.y=y;}
-// round glowing portholes (outside only)
-[[70,'#FFD58A'],[112,'#BFF3EC'],[-70,'#FFD58A'],[-118,'#FFD58A'],[150,'#BFF3EC']].forEach(([deg,c])=>{const a=THREE.MathUtils.degToRad(deg),x=Math.sin(a),z=Math.cos(a);
-  const w=add(new THREE.Mesh(new THREE.CircleGeometry(.34,24),hdr(c,2))); w.position.set(x*(R+.23),2.0,z*(R+.23)); w.lookAt(x*20,2.0,z*20);
-  const r=add(new THREE.Mesh(new THREE.TorusGeometry(.37,.07,6,24),brassM)); r.position.copy(w.position); r.quaternion.copy(w.quaternion);
-  eg(c,1.8,x*(R+.5),2.0,z*(R+.5),.45);});
-// little chimney with a lamp on the dome
-const domeTop=HH+.2+(R+.2)*.32;
-add(new THREE.Mesh(new THREE.CylinderGeometry(.18,.26,.9,8),inkM)).position.set(1.2,domeTop-.05,-1.2);
-add(new THREE.Mesh(new THREE.SphereGeometry(.22,14,10),hdr('#FFB25B',3))).position.set(1.2,domeTop+.55,-1.2);
-eg('#FF9A5B',2.4,1.2,domeTop+.55,-1.2,.6);
-// a crooked wooden lantern post by the airlock path
-const LP=new THREE.Vector3(2.7,0,-(R+3.4)); {const g=new THREE.Group(); g.position.copy(LP); g.rotation.z=.05; scene.add(g);
-  box(.16,3.1,.16,woodM,0,1.55,0,g); box(.9,.1,.1,woodM,-.35,3.0,0,g);
-  const lan=box(.32,.42,.32,hdr('#FFD58A',2.4),-.72,2.62,0,g); box(.42,.08,.42,inkM,-.72,2.88,0,g); box(.42,.06,.42,inkM,-.72,2.38,0,g);
-  eg('#FFB25B',2.2,-.72,2.62,0,.6,g);}
-// string lights and bunting from the dome to the post
-{const A=new THREE.Vector3(-1.8,4.9,-(R-1.2)), B=new THREE.Vector3(LP.x-.4,3.05,LP.z), C=A.clone().lerp(B,.5).add(new THREE.Vector3(0,-1.3,0));
-  const cur=new THREE.QuadraticBezierCurve3(A,C,B); add(new THREE.Mesh(new THREE.TubeGeometry(cur,30,.018,5),inkM));
+const flatM=c=>new THREE.MeshStandardMaterial({color:c,roughness:.9,metalness:0,flatShading:true});
+const shellM=flatM('#5C4D58'), PATCH=['#7C6A6E','#6B5A63','#8A7672','#5C4D58','#958078','#6F5C5E'].map(c=>new THREE.Color(c));
+const DOME_K=.62, RD=R+.2, domeTop=HH+.2+RD*DOME_K;   // DOME_K: how tall the dome is (1 = half a sphere)
+const shell=add(new THREE.Mesh(new THREE.CylinderGeometry(RD,RD,HH+.25,SEG-2,1,true,GAPA/2,Math.PI*2-GAPA),shellM)); shell.position.y=(HH+.25)/2; shell.castShadow=true;
+const dome=add(new THREE.Mesh(new THREE.SphereGeometry(RD,32,12,0,Math.PI*2,0,Math.PI/2),shellM)); dome.scale.y=DOME_K; dome.position.y=HH+.2; dome.castShadow=true;
+const foot=add(new THREE.Mesh(new THREE.CylinderGeometry(R+.5,R+.7,.35,SEG,1,true),inkM)); foot.position.y=.12;
+const domePt=(el,az,off=0)=>new THREE.Vector3(Math.cos(el)*Math.sin(az)*(RD+off),HH+.2+Math.sin(el)*(RD*DOME_K+off),Math.cos(el)*Math.cos(az)*(RD+off));
+const domeN=(el,az)=>new THREE.Vector3(Math.cos(el)*Math.sin(az),Math.sin(el)/DOME_K,Math.cos(el)*Math.cos(az)).normalize();
+// raised patch plates, one instanced mesh: rows round the wall (bay window and airlock kept clear), then rings up the dome
+{const T=[], wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
+  const clear=(az,y)=>{const a=Math.abs(wrap(az)); return a>GAPA/2+.06 && !(Math.abs(a-Math.PI)<.27 && y<2.9);};
+  for(let y=.55;y<HH;y+=.8){const n=Math.round(2*Math.PI*RD/.95); for(let k=0;k<n;k++){const az=k/n*Math.PI*2+y*1.7+(Math.random()-.5)*.03; if(!clear(az,y))continue;
+    const nv=new THREE.Vector3(Math.sin(az),0,Math.cos(az)); T.push({p:nv.clone().multiplyScalar(RD+.04).setY(y),n:nv});}}
+  for(let el=.08;el<1.42;el+=.17){const n=Math.max(4,Math.round(2*Math.PI*RD*Math.cos(el)/.95)); for(let k=0;k<n;k++){const az=k/n*Math.PI*2+el*3+(Math.random()-.5)*.03; T.push({p:domePt(el,az,.04),n:domeN(el,az)});}}
+  const im=new THREE.InstancedMesh(new THREE.BoxGeometry(.92,.78,.1),flatM('#ffffff'),T.length), o=new THREE.Object3D();
+  T.forEach((t,i)=>{o.position.copy(t.p); o.lookAt(t.p.clone().add(t.n)); o.rotateZ((Math.random()-.5)*.24); o.scale.set(.85+Math.random()*.25,.85+Math.random()*.25,1); o.updateMatrix(); im.setMatrixAt(i,o.matrix); im.setColorAt(i,PATCH[Math.random()*6|0]);});
+  im.castShadow=true; im.receiveShadow=true; add(im);}
+// glowing seams running from the top of the dome down to the ground
+{const seamM=hdr('#FFE6B0',1.6);
+  [.95,1.9,2.5,-1.0,-2.05].forEach(az=>{const pts=[]; for(let el=1.5;el>=0;el-=.1)pts.push(domePt(el,az,.11)); for(let y=HH;y>=.35;y-=.5)pts.push(new THREE.Vector3(Math.sin(az)*(RD+.11),y,Math.cos(az)*(RD+.11)));
+    add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),60,.025,6),seamM));});}
+// round glowing portholes with dark rings, on the wall and up the dome
+{const port=(p,n,c)=>{const w=add(new THREE.Mesh(new THREE.CircleGeometry(.34,24),hdr(c,2))); w.position.copy(p); w.lookAt(p.clone().add(n));
+    const r=add(new THREE.Mesh(new THREE.TorusGeometry(.37,.07,6,24),inkM)); r.position.copy(p); r.quaternion.copy(w.quaternion);
+    const g=p.clone().addScaledVector(n,.25); eg(c,1.7,g.x,g.y,g.z,.45);};
+  [[70,'#FFD58A'],[-108,'#FFD58A']].forEach(([deg,c])=>{const a=THREE.MathUtils.degToRad(deg),n=new THREE.Vector3(Math.sin(a),0,Math.cos(a)); port(n.clone().multiplyScalar(RD+.13).setY(2.0),n,c);});
+  [[.45,1.55,'#BFF3EC'],[.6,-.95,'#FFD58A'],[.4,2.25,'#FFD58A'],[.55,-2.45,'#BFF3EC']].forEach(([el,az,c])=>port(domePt(el,az,.13),domeN(el,az),c));}
+// chimney beacon on top
+add(new THREE.Mesh(new THREE.CylinderGeometry(.18,.25,.9,8),inkM)).position.set(0,domeTop+.35,0);
+add(new THREE.Mesh(new THREE.SphereGeometry(.22,16,12),hdr('#FFB25B',3))).position.set(0,domeTop+.95,0);
+eg('#FF8A5B',2.2,0,domeTop+.95,0,.6);
+// airlock porch with an arched, warmly glowing doorway. Its little green light stays (Sojourner calls the airlock "the green light").
+const tunnel=new THREE.Group(); tunnel.position.set(0,0,-(R+.9)); scene.add(tunnel);
+box(2.0,2.7,1.6,shellM,0,1.35,0,tunnel).castShadow=true; box(2.1,.2,1.7,inkM,0,2.75,0,tunnel);
+for(const [x,y,z,ry] of [[1.03,.7,.2,Math.PI/2],[1.03,1.7,-.35,Math.PI/2],[-1.03,1.1,0,-Math.PI/2],[-1.03,2.1,.4,-Math.PI/2],[.55,2.25,-.83,Math.PI],[-.6,.45,-.83,Math.PI]]){
+  const p=box(.7,.6,.06,flatM(PATCH[Math.random()*6|0]),x,y,z,tunnel); p.rotation.set(0,ry,(Math.random()-.5)*.25);}
+const doorM=hdr('#FFE1A6',1.6);
+const odoor=new THREE.Mesh(new THREE.PlaneGeometry(1.2,1.5),doorM); odoor.position.set(0,.75,-.82); odoor.rotation.y=Math.PI; tunnel.add(odoor);
+{const arch=new THREE.Mesh(new THREE.CircleGeometry(.6,32,0,Math.PI),doorM); arch.position.set(0,1.5,-.82); arch.rotation.y=Math.PI; tunnel.add(arch);
+  const fr=new THREE.Mesh(new THREE.TorusGeometry(.67,.08,8,32,Math.PI),inkM); fr.position.set(0,1.5,-.84); tunnel.add(fr);
+  box(.16,1.5,.16,inkM,-.67,.75,-.84,tunnel); box(.16,1.5,.16,inkM,.67,.75,-.84,tunnel);}
+box(.16,.2,.04,hdr('#4dff88',2.5),.9,1.3,-.83,tunnel);
+const doorL=new THREE.PointLight('#FFB25B',25,6,2); doorL.position.set(0,1.4,-2.0); tunnel.add(doorL);
+eg('#FFB25B',5,0,1.3,-1.1,.55,tunnel);
+// paving plates leading to the door
+{const n=24, im=new THREE.InstancedMesh(new THREE.BoxGeometry(1,.08,1),flatM('#ffffff'),n), o=new THREE.Object3D(), C=['#7A5452','#6A4848','#83605A'].map(c=>new THREE.Color(c));
+  for(let i=0;i<n;i++){const x=(Math.random()-.5)*2.8, z=-(R+1.9)-Math.random()*5.2; o.position.set(x,window.__gh(x,z)+.03,z); o.rotation.set(0,(Math.random()-.5)*.8,0); o.scale.set(.6+Math.random()*.5,1,.5+Math.random()*.4); o.updateMatrix(); im.setMatrixAt(i,o.matrix); im.setColorAt(i,C[i%3]);}
+  im.receiveShadow=true; add(im);}
+// a crooked stacked tower with glowing round windows (left of the path)
+const towerTop=new THREE.Object3D();
+{const x=-8,z=-12.5; let parent=new THREE.Group(); parent.position.set(x,window.__gh(x,z)-.05,z); parent.rotation.y=Math.atan2(-x,-14-z); scene.add(parent); OUT_COL.push({x,z,r:1.9});
+  [1.45,1.25,1.05,.85].forEach((r,i)=>{const seg=new THREE.Group(); seg.position.y=i?1.75:0; seg.rotation.set((Math.random()-.5)*.18,(Math.random()-.5)*.8,(Math.random()-.5)*.24); parent.add(seg);
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(r*.95,r,1.8,10),flatM(i%2?'#57464E':'#4A3B45')); m.position.y=.9; m.castShadow=m.receiveShadow=true; seg.add(m);
+    const band=new THREE.Mesh(new THREE.TorusGeometry(r*.98,.06,6,20),inkM); band.rotation.x=Math.PI/2; band.position.y=1.78; seg.add(band);
+    const c=i%2?'#BFF3EC':'#FFD58A', w=new THREE.Mesh(new THREE.CircleGeometry(r*.32,20),hdr(c,2.2)); w.position.set(.25,.95,r*.98); w.rotation.y=.15; seg.add(w);
+    eg(c,1.4,.25,.95,r+.25,.45,seg); parent=seg;});
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(1,1.4,7),flatM('#3B2F3A')); roof.position.y=2.5; roof.rotation.z=.12; roof.castShadow=true; parent.add(roof);
+  const ant=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,1.4,5),inkM); ant.position.set(.15,3.8,0); parent.add(ant);
+  const tip=new THREE.Mesh(new THREE.SphereGeometry(.12,12,8),hdr('#FF9CC0',3)); tip.position.set(.15,4.55,0); parent.add(tip); eg('#FF9CC0',.9,.15,4.55,0,.6,parent);
+  towerTop.position.set(0,2.2,0); parent.add(towerTop);}
+// a wooden scaffold tower with a lantern room on top (right of the path)
+const lanternTop=new THREE.Object3D(); let lanternL=null;
+{const x=8,z=-12.5,g=new THREE.Group(); g.position.set(x,window.__gh(x,z)-.05,z); g.rotation.set(0,Math.atan2(-x,-14-z),.04); scene.add(g); OUT_COL.push({x,z,r:1.7});
+  const wood=flatM('#3A2C2A'), B=(w,h,d,m,px,py,pz)=>{const b=box(w,h,d,m,px,py,pz,g);b.castShadow=true;return b;};
+  [[-.9,-.9],[.9,-.9],[-.9,.9],[.9,.9]].forEach(([a,b])=>B(.16,5.4,.16,wood,a*1.05,2.7,b*1.05).rotation.set(b*-.04,0,a*.04));
+  [1.4,3.0].forEach(y=>{B(2.1,.1,.1,wood,0,y,.95).rotation.z=.35; B(.1,.1,2.1,wood,.95,y+.4,0).rotation.x=-.35;});
+  B(2.3,1.3,2.1,flatM('#5E4A44'),0,5.9,0);
+  const pyr=new THREE.Mesh(new THREE.ConeGeometry(1.8,1.2,4),flatM('#4A3440')); pyr.rotation.y=Math.PI/4; pyr.position.y=7.15; pyr.castShadow=true; g.add(pyr);
+  const win=new THREE.Mesh(new THREE.PlaneGeometry(.7,.7),hdr('#FFD58A',2.6)); win.position.set(0,5.95,1.06); g.add(win);
+  lanternL=new THREE.PointLight('#FFC070',14,10,2); lanternL.position.set(0,5.9,1.8); g.add(lanternL);
+  eg('#FFB25B',3,0,5.95,1.25,.55,g);
+  B(.9,.6,.06,brassM,-1.6,4.4,1.0).rotation.z=-.08;   // hanging brass sign (blank)
+  lanternTop.position.set(0,6.9,0); g.add(lanternTop);}
+// string lights and bunting between the two towers, sagging over the path to the door
+{scene.updateMatrixWorld(true); const A=towerTop.getWorldPosition(new THREE.Vector3()), B=lanternTop.getWorldPosition(new THREE.Vector3()), C=new THREE.Vector3(0,4.9,-15);
+  const cur=new THREE.QuadraticBezierCurve3(A,C,B); add(new THREE.Mesh(new THREE.TubeGeometry(cur,60,.02,5),inkM));
   const cols=['#FFD58A','#FFB25B','#9FE8E0','#FF9CC0'];
-  for(let i=1;i<14;i++){const p=cur.getPoint(i/14), c=cols[i%4]; add(new THREE.Mesh(new THREE.SphereGeometry(.07,8,6),hdr(c,2.6))).position.copy(p).add(new THREE.Vector3(0,-.1,0));
-    const s=eg(c,.8,p.x,p.y-.1,p.z,.55); s.userData.ph=i*1.7; bulbs.push(s);}
-  const A2=new THREE.Vector3(-1.2,4.3,-(R-.6)), B2=new THREE.Vector3(LP.x,2.5,LP.z), C2=A2.clone().lerp(B2,.5).add(new THREE.Vector3(0,-1,0));
-  const cur2=new THREE.QuadraticBezierCurve3(A2,C2,B2); add(new THREE.Mesh(new THREE.TubeGeometry(cur2,30,.015,5),inkM));
+  for(let i=1;i<26;i++){const p=cur.getPoint(i/26), c=cols[Math.random()*4|0]; add(new THREE.Mesh(new THREE.SphereGeometry(.075,10,8),hdr(c,3))).position.set(p.x,p.y-.12,p.z);
+    const s=eg(c,.7,p.x,p.y-.12,p.z,.6); s.userData.ph=Math.random()*6; bulbs.push(s);}
+  const A2=new THREE.Vector3(-7.7,6.3,-12.3), B2=new THREE.Vector3(7.2,5.2,-12.3), C2=new THREE.Vector3(0,3.9,-15.5);
+  const cur2=new THREE.QuadraticBezierCurve3(A2,C2,B2); add(new THREE.Mesh(new THREE.TubeGeometry(cur2,60,.018,5),inkM));
   const fc=['#7A2E3A','#2F3E63','#9A5A2E','#4A2C55','#5E6B3A'];
-  for(let i=1;i<11;i++){const p=cur2.getPoint(i/11),q=cur2.getPoint(i/11+.04),hl=Math.hypot(q.x-p.x,q.z-p.z),sh=new THREE.Shape();sh.moveTo(0,0);sh.lineTo(hl,q.y-p.y);sh.lineTo(hl/2,(q.y-p.y)/2-.38);sh.closePath();
-    const f=add(new THREE.Mesh(new THREE.ShapeGeometry(sh),new THREE.MeshStandardMaterial({color:fc[i%5],roughness:.9,side:THREE.DoubleSide}))); f.position.copy(p); f.rotation.y=Math.atan2(-(q.z-p.z),q.x-p.x);}}
+  for(let i=1;i<18;i++){const p=cur2.getPoint(i/18),q=cur2.getPoint(i/18+.03),hl=Math.hypot(q.x-p.x,q.z-p.z),sh=new THREE.Shape();sh.moveTo(0,0);sh.lineTo(hl,q.y-p.y);sh.lineTo(hl/2,(q.y-p.y)/2-.55);sh.closePath();
+    const f=add(new THREE.Mesh(new THREE.ShapeGeometry(sh),new THREE.MeshStandardMaterial({color:fc[i%5],roughness:.9,flatShading:true,side:THREE.DoubleSide}))); f.position.copy(p); f.rotation.y=Math.atan2(-(q.z-p.z),q.x-p.x); f.castShadow=true;}}
 const beacon=new THREE.Mesh(new THREE.CylinderGeometry(.25,.25,12,10,1,true),new THREE.MeshBasicMaterial({color:'#ffe45c',transparent:true,opacity:.3,depthWrite:false,side:THREE.DoubleSide}));
 const homeBeacon=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,16,10,1,true),new THREE.MeshBasicMaterial({color:'#4dff88',transparent:true,opacity:.26,depthWrite:false,side:THREE.DoubleSide}));
 homeBeacon.position.set(0,10.5,-(R+.9)); homeBeacon.visible=false; scene.add(homeBeacon);
@@ -1202,7 +1250,7 @@ const EXIT=new THREE.Vector3(0,0,-(R+4.5)), INSIDE_SPOT=new THREE.Vector3(0,1.65
 function spawnCrystal(){
   const g=new THREE.Group(); const m=new THREE.MeshStandardMaterial({color:'#fff2a0',emissive:'#e8b800',emissiveIntensity:1.0,roughness:.25,metalness:0,flatShading:true});
   for(let i=0;i<5;i++){const c=new THREE.Mesh(new THREE.OctahedronGeometry(.18+Math.random()*.12,0),m);c.scale.y=2;c.position.set((Math.random()-.5)*.4,.25,(Math.random()-.5)*.4);c.rotation.set((Math.random()-.5)*.6,Math.random()*3,(Math.random()-.5)*.6);g.add(c);}
-  let x,z; do{const a=Math.random()*Math.PI*2, r=12+Math.random()*16; x=Math.sin(a)*r; z=Math.cos(a)*r;}while(Math.hypot(x-SOLAR_C.x,z-SOLAR_C.z)<9||Math.hypot(x-ROVER_POS.x,z-ROVER_POS.z)<5);
+  let x,z; do{const a=Math.random()*Math.PI*2, r=12+Math.random()*16; x=Math.sin(a)*r; z=Math.cos(a)*r;}while(Math.hypot(x-SOLAR_C.x,z-SOLAR_C.z)<9||Math.hypot(x-ROVER_POS.x,z-ROVER_POS.z)<5||OUT_COL.some(c=>Math.hypot(x-c.x,z-c.z)<c.r+2.5));
   g.position.set(x,window.__gh(x,z),z); const b=beacon.clone(); b.position.y=6; g.add(b);
   glowSprite('#FFD54A',2.6,0,.45,0,.75,g); glowSprite('#FFF2A0',1.1,0,.45,0,.8,g);   // big friendly glow: easy to spot at dusk
   scene.add(g); return g;}
@@ -1238,6 +1286,7 @@ function stepOutside(dt,mv){
   const rr=Math.hypot(p.x,p.z); if(rr<R+1.0 && !(Math.abs(p.x)<1.1&&p.z<0)){p.x*=(R+1.0)/rr;p.z*=(R+1.0)/rr;}
   if(Math.abs(p.x)<1.1 && p.z>-(R+1.8) && p.z<0) p.z=-(R+1.8);
   if(rr>90){p.x*=90/rr;p.z*=90/rr;}
+  for(const c of OUT_COL){const dx=p.x-c.x,dz=p.z-c.z,d=Math.hypot(dx,dz);if(d<c.r){p.x=c.x+dx/d*c.r;p.z=c.z+dz/d*c.r;}}   // don't walk through the towers
   p.y+=(window.__gh(p.x,p.z)+1.65+(mv.lengthSq()>0?Math.sin(performance.now()/160)*.04:0)-p.y)*.35;
   // Geiger clicks and camera "snow": faster and thicker when the radiation is higher (dose = how strong x how long)
   geigerT-=dt; if(geigerT<=0){geigerT=(1.6/(idx*idx*.25+.5))*(.5+Math.random()); sfx('geiger');}
