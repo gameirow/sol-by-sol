@@ -8,15 +8,26 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23c8542a'/%3E%3Ccircle cx='11' cy='12' r='3' fill='%23a03f1c'/%3E%3Ccircle cx='20' cy='20' r='4' fill='%23e07a45'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+/* ===== Storybook design tokens (see design/storybook-rebrand/STYLE_GUIDE.md). Change colours and fonts here only. ===== */
 :root{
-  --panel:rgba(13,17,24,.9); --soft:rgba(255,255,255,.05); --line:rgba(255,255,255,.13); --line2:rgba(255,255,255,.24);
-  --text:#eef1f5; --mute:#9ba7b6; --accent:#ff7a3c; --accent2:#ffb98a; --ok:#5fd394; --warnc:#ffb84d; --bad:#ff5d52; --info:#6cc3ff;
-  --disp:'Barlow Condensed','Arial Narrow',system-ui,sans-serif; --body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  /* palette */
+  --night:#1A1830; --violet:#34304F; --rose:#7A5269; --fog:#6E4F6A; --clay:#B9786A;
+  --wood:#3B2A26; --wood-edge:#6B4E3E; --ink:#1A1012;
+  --parch:#E9D9BC; --parch-edge:#D6C19C; --parch-ink:#2B1E1A; --parch-mute:#5E4A3E;
+  --cream:#F3DDB3; --cream-mute:#D9B98C; --brass:#C79A5A; --brass-dark:#8A5A2A;
+  --glow:#FFB25B; --glow2:#FFD58A; --cool:#9FE8E0; --pink:#FF9CC0; --crimson:#8A2E3A;
+  --gold:#FFC75F; --air:#8FE3DA; --moss:#B5E08A;
+  /* roles on dark backgrounds (a .card overrides these for parchment) */
+  --panel:rgba(43,30,28,.92); --soft:rgba(243,221,179,.06); --line:rgba(199,154,90,.38); --line2:rgba(199,154,90,.65);
+  --text:var(--cream); --mute:var(--cream-mute); --accent:var(--gold); --accent2:var(--glow2);
+  --ok:#A8E07E; --warnc:#FFC75F; --bad:#FF8A7A; --info:var(--cool);
+  /* fonts: storybook print for headings and signs, a calm serif for reading; numbers always lining + even width */
+  --disp:'IM Fell English SC',Georgia,'Times New Roman',serif; --body:'Spectral',Georgia,'Times New Roman',serif;
 }
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;height:100dvh;background:#000;color:var(--text);font-family:var(--body);overflow:hidden;user-select:none;-webkit-user-select:none;overscroll-behavior:none;touch-action:none;-webkit-font-smoothing:antialiased}
+html,body{margin:0;height:100%;height:100dvh;background:var(--night);color:var(--text);font-family:var(--body);overflow:hidden;user-select:none;-webkit-user-select:none;overscroll-behavior:none;touch-action:none;-webkit-font-smoothing:antialiased}
 #c{position:fixed;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
 #c.retro{image-rendering:pixelated}
 #fx{display:none;position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,#0000 0 2px,#0000001a 2px 3px),radial-gradient(ellipse at center,#0000 55%,#000a 100%)}
@@ -232,6 +243,7 @@ const INSIDE_SHARE = 0.5;        // thick walls stop storm particles and about h
 const EVA_FULL = 60;             // seconds walking outside that count as one whole working day outside
 const DUST_SOL = 0.06, DUST_STORM = 0.2, DUST_MAX = 0.6; // share of sunlight the panels lose per sol (settling dust is real, the numbers are game units)
 const SAMPLES_GOAL = 3, ACTS_PER_SOL = 2;
+const FD='"IM Fell English SC",Georgia,serif', FB='Spectral,Georgia,serif';   // canvas fonts (same as --disp / --body)
 const radIndex = uGy => Math.max(0,Math.min(10,Math.round(10*Math.log(Math.max(uGy,80)/80)/Math.log(1700/80))));  // 0–10: normal day = 1, May 2024 storm = 10
 
 /* ===================== STATE ===================== */
@@ -636,7 +648,7 @@ function openRad(){
   <canvas class="chart" id="rchart" width="700" height="190"></canvas>
   <p style="font-size:12px;opacity:.7">Real numbers measured on Mars by NASA's Curiosity rover, turned into a simple 0–10 scale. The limit comes from NASA's rules for astronauts.</p>
   <p><button class="btn" onclick="closeOv();sfx('ok')">CLOSE</button></p>`);
-  const cv=$('rchart'), g=cv.getContext('2d'); const W=cv.width,H=cv.height; g.font='600 13px Barlow, sans-serif';
+  const cv=$('rchart'), g=cv.getContext('2d'); const W=cv.width,H=cv.height; g.font='600 13px '+FB;
   for(let i=0;i<SOLS;i++){const x=40+i*(W-60)/SOLS, w=(W-60)/SOLS-8, d=S.days[i];
     g.fillStyle='#ffffff10'; g.fillRect(x,22,w,H-52);
     if(d){const v=radIndex(d.unshielded), h=(H-45)*v/10; g.fillStyle=radCol(v); g.fillRect(x,H-30-h,w,Math.max(2,h)); g.fillStyle='#fff'; g.fillText(v,x+w/2-4,H-34-h); if(d.eva){g.beginPath();g.arc(x+w/2,24,4,0,7);g.fill();}}
@@ -933,7 +945,7 @@ function station(name,label,angleDeg,color,open,build){
   return st;
 }
 const labelDraws=[];
-function labelSprite(text,color){const draw=(g,w,h)=>{g.clearRect(0,0,w,h);g.fillStyle='#0b0f14dd';g.beginPath();g.roundRect(4,4,w-8,h-8,18);g.fill();g.strokeStyle=color;g.lineWidth=6;g.stroke();g.fillStyle=color;g.font='700 60px "Barlow Condensed",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(text,w/2,h/2+3);};const t=canvasTex(512,112,draw);labelDraws.push(()=>{draw(t.userData.g,512,112);t.needsUpdate=true;});
+function labelSprite(text,color){const draw=(g,w,h)=>{g.clearRect(0,0,w,h);g.fillStyle='#0b0f14dd';g.beginPath();g.roundRect(4,4,w-8,h-8,18);g.fill();g.strokeStyle=color;g.lineWidth=6;g.stroke();g.fillStyle=color;g.font='60px '+FD;g.textAlign='center';g.textBaseline='middle';g.fillText(text,w/2,h/2+3);};const t=canvasTex(512,112,draw);labelDraws.push(()=>{draw(t.userData.g,512,112);t.needsUpdate=true;});
   const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,toneMapped:false})); s.scale.set(1.25,.27,1); return s;}
 function consoleBody(grp,tex,color){
   const cab=box(1.6,.92,.72,darkM,0,.46,0,grp); cab.castShadow=true;
@@ -1012,17 +1024,17 @@ const motes=add(new THREE.Points(new THREE.BufferGeometry().setAttribute('positi
 function drawScreens(){
   if(!S) return;
   const T=(tex,fn)=>{const {g}=tex.userData;g.setTransform(2,0,0,2,0,0);const gr=g.createLinearGradient(0,0,0,160);gr.addColorStop(0,'#0c1820');gr.addColorStop(1,'#060b10');g.fillStyle=gr;g.fillRect(0,0,256,160);fn(g);g.fillStyle='#ffffff06';for(let y=0;y<160;y+=2)g.fillRect(0,y,256,1);tex.needsUpdate=true;};
-  T(stPower.tex,g=>{g.fillStyle='#ffb347';g.font='bold 20px "Barlow Condensed",sans-serif';g.fillText('POWER · SOL '+Math.min(S.sol,SOLS),10,22);
+  T(stPower.tex,g=>{g.fillStyle='#ffb347';g.font='20px '+FD;g.fillText('POWER · SOL '+Math.min(S.sol,SOLS),10,22);
     const rows=[['AIR+HEAT',S.alloc.air,'#7dff9a'],['FARM',S.alloc.farm,'#ffd34d'],['ACTIVITY',S.acts.reduce((t,k)=>t+ACT_COST[k],0),'#c39bff']];
-    rows.forEach(([n,v,c],i)=>{g.fillStyle='#ffffffaa';g.font='600 14px "Barlow Condensed",sans-serif';g.fillText(n,10,52+i*26);for(let k=0;k<6;k++){g.fillStyle=k<v?c:'#ffffff14';g.fillRect(84+k*26,41+i*26,20,13);}});
-    g.fillStyle=used()>available()?'#ff5a4f':'#ffb347';g.font='bold 17px "Barlow Condensed",sans-serif';g.fillText(`USED ${used()}/${available()}`,10,150);});
-  T(stComms.tex,g=>{g.fillStyle='#5ad1ff';g.font='bold 20px "Barlow Condensed",sans-serif';g.fillText('COMMS · EARTH LINK',10,22);
-    const m=S.msgs[0]; if(m){g.fillStyle=m.alert?'#ff7a6f':'#d9f4ff';g.font='bold 15px "Barlow Condensed",sans-serif';wrap(g,m.title.replace(/<[^>]+>/g,''),10,50,236,19,3);}
-    if(!S.read&&(performance.now()/500|0)%2){g.fillStyle='#ff5a4f';g.fillRect(10,120,236,28);g.fillStyle='#000';g.font='bold 18px "Barlow Condensed",sans-serif';g.fillText('NEW MESSAGE',84,140);}});
-  T(stRad.tex,g=>{g.fillStyle='#ff5a4f';g.font='bold 20px "Barlow Condensed",sans-serif';g.fillText('RADIATION OUTSIDE',10,22);
-    const v=radIndex(outsideToday()); g.font='bold 60px "Barlow Condensed",sans-serif'; g.fillStyle=v>=6?'#ff5a4f':v>=3?'#ffb347':'#7dff9a'; g.fillText(v+'/10',10,88);
+    rows.forEach(([n,v,c],i)=>{g.fillStyle='#ffffffaa';g.font='14px '+FD;g.fillText(n,10,52+i*26);for(let k=0;k<6;k++){g.fillStyle=k<v?c:'#ffffff14';g.fillRect(84+k*26,41+i*26,20,13);}});
+    g.fillStyle=used()>available()?'#ff5a4f':'#ffb347';g.font='17px '+FD;g.fillText(`USED ${used()}/${available()}`,10,150);});
+  T(stComms.tex,g=>{g.fillStyle='#5ad1ff';g.font='20px '+FD;g.fillText('COMMS · EARTH LINK',10,22);
+    const m=S.msgs[0]; if(m){g.fillStyle=m.alert?'#ff7a6f':'#d9f4ff';g.font='15px '+FD;wrap(g,m.title.replace(/<[^>]+>/g,''),10,50,236,19,3);}
+    if(!S.read&&(performance.now()/500|0)%2){g.fillStyle='#ff5a4f';g.fillRect(10,120,236,28);g.fillStyle='#000';g.font='18px '+FD;g.fillText('NEW MESSAGE',84,140);}});
+  T(stRad.tex,g=>{g.fillStyle='#ff5a4f';g.font='20px '+FD;g.fillText('RADIATION OUTSIDE',10,22);
+    const v=radIndex(outsideToday()); g.font='60px '+FD; g.fillStyle=v>=6?'#ff5a4f':v>=3?'#ffb347':'#7dff9a'; g.fillText(v+'/10',10,88);
     for(let k=0;k<=10;k++){g.fillStyle=k<=v?(k>=6?'#ff5a4f':k>=3?'#ffb347':'#7dff9a'):'#ffffff14';g.fillRect(10+k*21,104,17,14);}
-    g.fillStyle='#7dff9a';g.font='bold 15px "Barlow Condensed",sans-serif';g.fillText('INSIDE: VERY LOW',10,145);});
+    g.fillStyle='#7dff9a';g.font='15px '+FD;g.fillText('INSIDE: VERY LOW',10,145);});
   // greenhouse & tanks reflect reserves
   const frac=S.food/10, M=new THREE.Matrix4(), sc=new THREE.Vector3();
   plantIM.forEach((im,lv)=>{im.userData.base.forEach((b,i)=>{const p=(lv*8+(i/6|0))/16;const k=p<frac?1:.4;sc.set(k,k,k);M.compose(b.pos,b.q,sc);im.setMatrixAt(i,M);});im.instanceMatrix.needsUpdate=true;});
@@ -1337,7 +1349,7 @@ addEventListener('keydown',e=>{const k=e.key.toLowerCase();
   if(k==='g'){Q=Q==='high'?'low':'high';applyQuality();toast(Q==='high'?'High graphics':'Fast graphics');}});
 applyQuality(); S={sol:1,food:4,dose:0,samples:0,battery:0,f:{rad:10,fit:8,air:9,well:8,mood:7},acts:[],alloc:{air:3,farm:3},storms:[],days:[],msgs:[],read:true,wx:WEATHER[2]}; S0();
 window.startFps=()=>{fpsCheck=true;fpsAcc=0;fpsN=0;};
-function S0(){setDayTime(); drawScreens(); S=null; window.__ready=true; if(seenIntro()) titleScreen(); else introGate(); loop(); if(document.fonts)Promise.all([document.fonts.load('700 60px "Barlow Condensed"'),document.fonts.load('600 13px Barlow')]).catch(()=>{}).then(()=>{labelDraws.forEach(f=>f());if(S)drawScreens();});}
+function S0(){setDayTime(); drawScreens(); S=null; window.__ready=true; if(seenIntro()) titleScreen(); else introGate(); loop(); if(document.fonts)Promise.all([document.fonts.load('60px "IM Fell English SC"'),document.fonts.load('600 13px Spectral')]).catch(()=>{}).then(()=>{labelDraws.forEach(f=>f());if(S)drawScreens();});}
 </script>
 </body>
 </html>
