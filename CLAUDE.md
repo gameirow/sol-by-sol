@@ -43,8 +43,11 @@ Must be served over http (not file://) because photos/model load with `import()`
 Syntax check: extract the `<script type="module">` block and run `node --check`.
 
 ## Hosting
-- **Public link (submitted): https://gameirow.github.io/sol-by-sol/** — GitHub Pages, served from the `gh-pages` branch (just the built `dist/` files + `.nojekyll`).
+- **Public site: https://solbysol.earth** — GitHub Pages, served from the `gh-pages` branch (just the built `dist/` files + `.nojekyll` + `CNAME`).
+  The submitted link https://gameirow.github.io/sol-by-sol/ redirects there; www.solbysol.earth redirects too.
+  Domain at Porkbun (DNS: ALIAS `solbysol.earth` and CNAME `www`, both to `gameirow.github.io`). HTTPS certificate by GitHub (live 15 Nov 2026).
   To update it: `python build.py`, copy `dist/` (without `dist/bal/`) over the files on the `gh-pages` branch, commit, push. Live about a minute later.
+  NEVER delete the `CNAME` file on `gh-pages` (it holds "solbysol.earth"; without it the domain stops working).
 - Live now as a Claude artifact: https://claude.ai/artifact/Fpt2ydxutX7q2Hxokyi7cc
   (only the claude.ai web chat can republish it). Share → "Anyone with the link" to let others play.
 - For our own hosting (GoDaddy from NASA, GitHub Pages, Netlify): upload the `dist/` folder as-is.
@@ -133,7 +136,7 @@ Syntax check: extract the `<script type="module">` block and run `node --check`.
 - NASA Images API, NASA-3D-Resources (GitHub).
 
 ## Open to-dos
-0. Re-upload `sol-by-sol-site.zip` (or the `dist` folder) to Netlify after every rebuild; connect solbysol.earth (Porkbun DNS) to the Netlify site.
+0. GitHub repo Settings → Pages: tick "Enforce HTTPS" (João, needs his GitHub login) so http:// also jumps to https://. Netlify is not used.
 1. Human playtest of a full 10 sols by a real kid, and a real phone test of walking outside (only checked in a phone-sized browser window so far).
 2. Republish the Claude artifact from the claude.ai web chat (the live link still shows the old version).
 3. Submission page + demo video.
