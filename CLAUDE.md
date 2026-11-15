@@ -81,6 +81,10 @@ Syntax check: extract the `<script type="module">` block and run `node --check`.
   Controls: Next (or Enter/Space/Right) skips one part, Skip intro (Esc) skips all, Sound on/off. Seen flag in localStorage `solbysol_intro`; "Watch intro" on the title replays.
   Sound was never heard by Claude (no audio in the preview): only checked that clips play, the mouth follows them and a missing clip doesn't stall the film.
 - Narrator: Sojourner the rover (speech bubble + 2D portrait).
+- Controls on a computer (15 Nov 2026, João: "I want it to move just by moving the cursor"): mouse look with pointer lock (`grabMouse()` / `freeMouse()`).
+  Closing a card or clicking the view grabs the mouse; a click uses what is in the middle (or dismisses Sojourner's bubble); Esc, cards, the night card and the
+  storm alarm free it. If the browser refuses pointer lock (e.g. inside another page), it falls back to drag-to-look for good. Touch keeps drag + joystick.
+  The Claude desktop app's browser pane refuses pointer lock, so the real mouse look was only checked in normal Chrome by João.
 - Bay window: sits in a solid wooden surround (header, sill, side posts fill the slot between the inner wall R and the outer shell R+.2).
   Storm shutters roll down outside it (with a rattle sound) during a storm watch, radiation 6+/10 or a dust storm, and roll up after. Look only, not a game rule.
 - You are a little astronaut (`astro`, built in code: cream suit, big helmet with dark visor, backpack, pink antenna tip). Two views, switched with the

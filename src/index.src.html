@@ -90,6 +90,7 @@ a{color:var(--accent2)}
 #night.hide{display:none}#night h3{font:400 22px/1.1 var(--disp);margin:0 0 6px;color:var(--crimson)}#night p{margin:0 0 8px;font-size:15px}#night .fact{font-style:italic}
 #night .nface svg{width:64px;height:64px}#night .warnc{color:var(--bad)}
 @media (max-width:520px){#night .nface{display:none}#night p{font-size:14px}}
+#lookHint{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,24px);font:400 17px var(--disp);letter-spacing:.05em;color:var(--cream);background:rgba(43,30,28,.8);border:1px solid var(--brass);padding:6px 14px;border-radius:6px;pointer-events:none;z-index:5}
 #help{position:fixed;right:12px;bottom:12px;font-size:13.5px;color:var(--mute);background:rgba(43,30,28,.78);border:1px solid var(--line);padding:7px 12px;border-radius:6px;z-index:5}
 #help b{color:var(--cream);font-weight:600}
 #ticker{position:fixed;right:12px;bottom:50px;max-width:420px;font-size:15px;line-height:1.4;background:var(--panel);border:2px solid var(--ink);border-left:5px solid var(--gold);box-shadow:inset 0 0 0 1.5px var(--wood-edge),0 0 22px rgba(255,178,91,.2),0 10px 30px rgba(0,0,0,.4);padding:10px 14px;border-radius:6px;z-index:25;display:none}
@@ -240,7 +241,7 @@ body.tp #suit{bottom:auto!important;top:122px}   /* third person: keep the suit 
 <canvas id="snow"></canvas>
 <div id="alarm"></div>
 <div id="fx"></div>
-<div id="cross"></div>
+<div id="cross"></div><div id="lookHint">Click to look around with the mouse</div>
 <div id="hud"></div>
 <div id="prompt"></div><div id="night" class="card hide"></div>
 <div id="ticker"></div>
@@ -546,8 +547,8 @@ window.nextTalk=nextTalk;
 
 /* ===================== UI: OVERLAYS ===================== */
 let ovModal=false;  // modal cards (title, reports) can't be closed with Escape
-function overlay(html,modal,cls){ $('card').className='card '+(cls||''); $('card').innerHTML=html; $('card').scrollTop=0; $('ov').classList.remove('hide'); uiOpen=true; ovModal=!!modal; keys={}; }
-function closeOv(){ $('ov').classList.add('hide'); uiOpen=false; }
+function overlay(html,modal,cls){ freeMouse(); $('card').className='card '+(cls||''); $('card').innerHTML=html; $('card').scrollTop=0; $('ov').classList.remove('hide'); uiOpen=true; ovModal=!!modal; keys={}; }
+function closeOv(){ $('ov').classList.add('hide'); uiOpen=false; grabMouse(); }
 window.closeOv=closeOv;
 
 function titleScreen(){
@@ -801,7 +802,7 @@ const NIGHT_FACTS=[
   'From Mars, the Sun looks smaller than from Earth: only about <b>two-thirds</b> as wide. Mars is farther away.',
   'Mars spins like Earth, so it has day and night. But a year on Mars lasts <b>687</b> Earth days!',
   'With no city lights, the night sky on Mars is full of stars.'];
-function nightFalls(){ const w=today(), a=S.alloc, need=needAir(w), el=$('night'); TOD.tt=1.08; TOD.nt=1;
+function nightFalls(){ freeMouse(); const w=today(), a=S.alloc, need=needAir(w), el=$('night'); TOD.tt=1.08; TOD.nt=1;
   el.innerHTML=`<div class="nface">${portrait('happy')}</div><div><h3>${ic('moon')}Night on Mars · Sol ${S.sol}</h3>
    <p>Tonight it gets down to <b>${w[1]}°C</b>. At midday it was ${w[2]}°C.</p>
    <p>The solar panels make no power at night. The <b>batteries</b> they charged in the day keep the air &amp; heat running.${a.air<need?' <b class="warnc">Not enough for tonight: it will get cold!</b>':''}</p>
@@ -1546,7 +1547,7 @@ function stepOutside(dt,mv){
   if(idx>=4) snowT=Math.max(snowT,.3);
   const sn=stormNow();
   if(sn.fresh>0 && !S.arrived && S.evaT>=S.onsetT){ S.arrived=true; S.warnT=S.evaT+7; sfx('alarm'); flashAlarm(4);
-    say('alarm',`Radiation is shooting up! The solar storm is here. <b>Get back inside, fast!</b>`); updateHUD(); updateSuit(); }
+    freeMouse(); say('alarm',`Radiation is shooting up! The solar storm is here. <b>Get back inside, fast!</b>`); updateHUD(); updateSuit(); }
   if(S.arrived && sn.fresh>0 && !leaving) S.stormT=(S.stormT||0)+dt;
   if(S.warnT && S.evaT>=S.warnT) lateWarning();
   suitT-=dt; if(suitT<=0){suitT=.25; updateSuit();}
@@ -1566,10 +1567,33 @@ addEventListener('keydown',e=>{if(uiOpen){if(e.key==='Escape'&&!ovModal)closeOv(
   if(e.key==='e'||e.key==='E'||e.key==='Enter'){const st=nearest();if(st&&st.d<2.4)useStation(st.st);}});
 addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 let zoom=false; addEventListener('keydown',e=>{if(!uiOpen&&(e.key==='z'||e.key==='Z'))zoom=true;}); addEventListener('keyup',e=>{if(e.key==='z'||e.key==='Z')zoom=false;});
-canvas.addEventListener('pointerdown',e=>{if(drag)return;drag={id:e.pointerId,x:e.clientX,y:e.clientY,moved:0};canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing';});
+canvas.addEventListener('pointerdown',e=>{
+  if(LOCKABLE&&e.pointerType==='mouse'){ if(e.button!==0) return;     // computer: the mouse looks around, a click uses what is in the middle
+    if(!locked()){ if(!uiOpen) grabMouse(true); return; }
+    if(talking){ nextTalk(); return; }                                  // a click while Sojourner talks = "Got it"
+    if(!uiOpen){ const r=canvas.getBoundingClientRect(); clickAt({clientX:r.left+r.width/2,clientY:r.top+r.height/2}); } return; }
+  if(drag)return;drag={id:e.pointerId,x:e.clientX,y:e.clientY,moved:0};canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing';});
 canvas.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.abs(dx)+Math.abs(dy);drag.x=e.clientX;drag.y=e.clientY;yaw-=dx*0.005;pitch=Math.max(-1.2,Math.min(1.2,pitch-dy*0.005));});
 canvas.addEventListener('pointerup',e=>{if(!drag||e.pointerId!==drag.id)return;canvas.style.cursor='grab';if(drag.moved<8&&!uiOpen)clickAt(e);drag=null;});
 canvas.addEventListener('pointercancel',()=>{drag=null;});
+// MOUSE LOOK on computers: move the mouse to look, no dragging (pointer lock). The browser needs one click to grab the mouse;
+// closing a card counts as that click. Cards, the night card and the storm alarm free the mouse; Esc frees it too. Touch keeps drag-to-look.
+var LOCKABLE = !TOUCH && !!canvas.requestPointerLock;
+const locked = () => document.pointerLockElement===canvas;
+let lockOk=false, lockClick=false;   // lockOk: grabbing has worked once; lockClick: this try came from a click on the view
+function grabMouse(fromClick){ if(!LOCKABLE||locked()||uiOpen||INTRO||!$('night').classList.contains('hide')) return;
+  if(!fromClick && navigator.userActivation && !navigator.userActivation.isActive) return;   // only right after a click or key
+  lockClick=!!fromClick; try{ const q=canvas.requestPointerLock(); if(q&&q.catch) q.catch(()=>{}); }catch(e){} }
+// Some places block grabbing the mouse (e.g. a page inside another page). Then fall back to drag-to-look for good.
+document.addEventListener('pointerlockerror',()=>{ if(!lockClick||lockOk) return; LOCKABLE=false; loop.hint=null; $('lookHint').style.display='none';
+  $('help').innerHTML='<b>Drag</b> to look · <b>WASD</b> or arrows to walk · <b>E</b> or click a screen to use it · hold <b>Z</b> to zoom · <b>V</b> view · <b>M</b> sound · <b>G</b> graphics';
+  canvas.style.cursor='grab'; toast('Drag with the mouse to look around.'); });
+function freeMouse(){ if(document.pointerLockElement) document.exitPointerLock(); }
+document.addEventListener('mousemove',e=>{ if(!locked()||uiOpen) return; autoWalk=null;
+  yaw-=e.movementX*0.0026; pitch=Math.max(-1.2,Math.min(1.2,pitch-e.movementY*0.0026)); });
+document.addEventListener('pointerlockchange',()=>{ if(locked()) lockOk=true; document.body.classList.toggle('locked',locked()); });
+if(LOCKABLE){ $('help').innerHTML='<b>Move the mouse</b> to look · <b>click</b> to use what is in the middle · <b>Esc</b> shows the mouse · <b>WASD</b> or arrows to walk · hold <b>Z</b> to zoom · <b>V</b> view · <b>M</b> sound · <b>G</b> graphics';
+  canvas.style.cursor='pointer'; }
 // touch joystick + binoculars
 const joy={x:0,y:0,id:null}; (function(){const J=$('joy'),K=$('knob');const upd=e=>{const r=J.getBoundingClientRect();let dx=e.clientX-(r.left+60),dy=e.clientY-(r.top+60);const d=Math.hypot(dx,dy);if(d>45){dx*=45/d;dy*=45/d;}joy.x=dx/45;joy.y=dy/45;K.style.left=(35+dx)+'px';K.style.top=(35+dy)+'px';};
   J.addEventListener('pointerdown',e=>{e.stopPropagation();joy.id=e.pointerId;J.setPointerCapture(e.pointerId);upd(e);autoWalk=null;});
@@ -2040,6 +2064,7 @@ function loop(){const dt=Math.min(.05,clock.getDelta()),t=clock.elapsedTime;if(I
   const cap=sightCaption(); if(cap){const pr=$('prompt');pr.style.display='block';pr.innerHTML=cap.t;}
   screenT+=dt;if(screenT>.5&&S){screenT=0;drawScreens();}
   if(fpsCheck&&!uiOpen){fpsAcc+=dt;fpsN++;if(fpsAcc>3){const fps=fpsN/fpsAcc;fpsCheck=false;if(fps<32&&Q==='high'){Q='low';applyQuality();toast('Switched to fast graphics for your computer. Press <b>G</b> to switch back.');}}}
+  if(LOCKABLE&&loop.hint!==null){ const show=!locked()&&!uiOpen&&!INTRO&&!talking&&$('night').classList.contains('hide'); if(show!==loop.hint){loop.hint=show; $('lookHint').style.display=show?'block':'none';} }
   updateView(dt); composer.render(dt);requestAnimationFrame(loop);}
 addEventListener('resize',resize); window.__dbg={scene,camera,THREE}; window.__open=n=>stations.find(x=>x.name===n).open(); window.__S=()=>S; window.__cr=()=>crystal; window.__adj=(k,d)=>adj(k,d); window.__end=()=>endSol(); window.__new=()=>newMission();
 window.__frame=keepCam=>{if(!keepCam&&!INTRO)camera.rotation.set(pitch,yaw,0);updateView(0);composer.render(0);};   // debug: draw one frame now (e.g. in a hidden tab)
