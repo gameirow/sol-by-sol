@@ -7,3 +7,5 @@ __pycache__/
 *.pyc
 .DS_Store
 Thumbs.db
+# pronunciation test clips
+voice-tests/
