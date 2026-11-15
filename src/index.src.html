@@ -1121,7 +1121,12 @@ const gltf=new GLTFLoader(); gltf.setMeshoptDecoder(MeshoptDecoder);
 async function loadModel(url,pos,rotY,cb,yOff=0){let buf;try{const mod=await import(url);const bin=atob(mod.default);buf=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);}catch(e){return;}
   gltf.parse(buf.buffer,'',g=>{const m=g.scene;m.position.copy(pos);m.position.y=window.__gh(pos.x,pos.z)-.02+yOff;m.rotation.y=rotY;
   m.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material){o.material.envMapIntensity=.6;}}});scene.add(m);cb&&cb(m);},()=>{});}
-loadModel('./assets/curiosity.js',ROVER_POS,-2.3,null,.5);
+// NASA's file has plain white helper boxes ("pivot" material, 1.4 m and 2.7 m) around and under the wheels: hide them,
+// then stand the rover on its real wheels (named wheel_01_L ... wheel_03_R in the file).
+loadModel('./assets/curiosity.js',ROVER_POS,-2.3,m=>{ m.updateMatrixWorld(true); const tmp=new THREE.Box3(), sz=new THREE.Vector3(), wheels=new THREE.Box3();
+  m.traverse(o=>{ if(o.isMesh&&o.material&&o.material.name==='pivot'){ tmp.setFromObject(o).getSize(sz); if(sz.y>.5&&sz.x>1&&sz.z>1){ o.visible=false; o.castShadow=false; } } });
+  m.traverse(o=>{ if(/^wheel_/.test(o.name)) wheels.union(tmp.setFromObject(o)); });
+  if(!wheels.isEmpty()) m.position.y+=window.__gh(ROVER_POS.x,ROVER_POS.z)-.04-wheels.min.y; });
 
 /* ---- habitat interior ---- */
 const R=6, HH=3.2, SEG=12, GAPA=Math.PI/3; // 12-sided module, 2 facets open for the bay window
