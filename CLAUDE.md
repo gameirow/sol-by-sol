@@ -43,6 +43,8 @@ Must be served over http (not file://) because photos/model load with `import()`
 Syntax check: extract the `<script type="module">` block and run `node --check`.
 
 ## Hosting
+- **Public link (submitted): https://gameirow.github.io/sol-by-sol/** — GitHub Pages, served from the `gh-pages` branch (just the built `dist/` files + `.nojekyll`).
+  To update it: `python build.py`, copy `dist/` (without `dist/bal/`) over the files on the `gh-pages` branch, commit, push. Live about a minute later.
 - Live now as a Claude artifact: https://claude.ai/artifact/Fpt2ydxutX7q2Hxokyi7cc
   (only the claude.ai web chat can republish it). Share → "Anyone with the link" to let others play.
 - For our own hosting (GoDaddy from NASA, GitHub Pages, Netlify): upload the `dist/` folder as-is.
