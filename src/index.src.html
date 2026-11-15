@@ -220,7 +220,12 @@ body.touch #backBtn{left:auto;right:calc(12px + env(safe-area-inset-right));tran
 #cineCap .bub{flex:1;font-size:19px}
 #cineText{animation:pop .35s ease-out}
 #cineDots{display:flex;gap:5px;flex:1}#cineDots i{flex:1;height:4px;border-radius:3px;background:rgba(43,30,26,.18)}#cineDots i.on{background:var(--crimson)}
-body.cine #help,body.cine #cross,body.cine #hud,body.cine #narr,body.cine #prompt,body.cine #joy,body.cine #binoBtn{display:none!important}
+body.cine #help,body.cine #cross,body.cine #hud,body.cine #narr,body.cine #prompt,body.cine #joy,body.cine #binoBtn,body.cine #viewBtn{display:none!important}
+#viewBtn{position:fixed;top:10px;right:10px;width:48px;height:48px;padding:0;border-radius:50%;background:linear-gradient(#4A3530,#33241F);border:3px solid var(--brass);box-shadow:inset 0 0 0 2px var(--ink),0 0 14px rgba(255,178,91,.3);color:var(--cream);z-index:6;display:flex;align-items:center;justify-content:center;cursor:pointer}
+#viewBtn .ic{width:24px;height:24px;filter:drop-shadow(0 1px 0 rgba(26,16,18,.85))}#viewBtn:hover{filter:brightness(1.18)}
+#hud{right:68px!important}body.outside.tp #helmet,body.tp #cross{display:none}
+body.tp #suit{bottom:auto!important;top:122px}   /* third person: keep the suit meter off your astronaut */
+@media (max-width:700px){#viewBtn{top:6px;right:6px;width:44px;height:44px}#hud{right:56px!important}body.tp #suit{top:94px}}
 @media (max-width:700px){#cineCap .bub{font-size:16px}#cineFace{flex-basis:56px}#cineFace svg{width:56px;height:56px}.lb{height:4vh}}
 .dust{display:inline-block;width:9px;height:9px;border-radius:50%;background:#B07A4A;box-shadow:0 0 0 3px rgba(176,122,74,.3)}
 </style>
@@ -236,8 +241,8 @@ body.cine #help,body.cine #cross,body.cine #hud,body.cine #narr,body.cine #promp
 <div id="prompt"></div>
 <div id="ticker"></div>
 <div id="helmet"></div><div id="suit"></div><button id="backBtn" class="btn" onclick="goInside()">Go inside</button>
-<div id="joy"><div id="knob"></div></div><button id="binoBtn" class="tbtn"></button>
-<div id="help"><b>Drag</b> to look · <b>WASD</b> or arrows to walk · <b>E</b> or click a screen to use it · hold <b>Z</b> to zoom · <b>G</b> graphics</div>
+<div id="joy"><div id="knob"></div></div><button id="binoBtn" class="tbtn"></button><button id="viewBtn" onclick="toggleView()" aria-label="Switch view: through your helmet, or see your astronaut" title="Switch view (V)"></button>
+<div id="help"><b>Drag</b> to look · <b>WASD</b> or arrows to walk · <b>E</b> or click a screen to use it · hold <b>Z</b> to zoom · <b>V</b> view · <b>G</b> graphics</div>
 <div id="narr" class="hide"><div id="narrFace"></div><div class="bub"><div class="who">SOJOURNER</div><div id="narrText"></div><button class="btn sm" id="narrNext" onclick="nextTalk()">Got it</button></div></div>
 <div id="cine" class="hide"><div id="cineFade"></div><div class="lb" style="top:0"></div><div class="lb" style="bottom:0"></div>
  <div id="cineNote">Sizes and distances not to scale</div><div id="cineTop"><button id="cineMute" class="btn alt sm" onclick="toggleMute()">Sound on</button><button id="cineSkip" class="btn alt sm" onclick="endIntro()">Skip intro</button></div>
@@ -439,7 +444,8 @@ const ICONS={
  cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
  vol:'<path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
  mute:'<path d="M11 5 6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6"/>',
- next:'<path d="M5 4l10 8-10 8zM19 5v14"/>'};
+ next:'<path d="M5 4l10 8-10 8zM19 5v14"/>',
+ eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'};
 const ic=n=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||''}</svg>`;
 const $=id=>document.getElementById(id);
 $('binoBtn').innerHTML=ic('zoom'); $('backBtn').innerHTML=ic('home')+'Go inside';
@@ -801,6 +807,7 @@ renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,0.05,150000);
 camera.rotation.order='YXZ';
+const viewCam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,0.05,150000);   // what we draw with (first or third person), see updateView()
 const pmrem=new THREE.PMREMGenerator(renderer);
 scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
 scene.environmentIntensity=0.35;
@@ -810,7 +817,7 @@ const QUALITY={high:{dpr:Math.min(devicePixelRatio,1.5),bloom:true,shadows:true}
 const TOUCH=matchMedia('(pointer: coarse)').matches||('ontouchstart' in window); if(TOUCH)document.body.classList.add('touch');
 let Q=(TOUCH||(navigator.hardwareConcurrency||4)<=2)?'low':'high', RETRO=false;
 const composer=new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene,camera));
+composer.addPass(new RenderPass(scene,viewCam));
 const bloom=new UnrealBloomPass(new THREE.Vector2(256,256),0.6,0.45,0.85); composer.addPass(bloom);
 const grade=new ShaderPass({uniforms:{tDiffuse:{value:null},vig:{value:0.45},t:{value:0},red:{value:0}},
  vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
@@ -1286,7 +1293,7 @@ function stepOutside(dt,mv){
   const rr=Math.hypot(p.x,p.z); if(rr<R+1.0 && !(Math.abs(p.x)<1.1&&p.z<0)){p.x*=(R+1.0)/rr;p.z*=(R+1.0)/rr;}
   if(Math.abs(p.x)<1.1 && p.z>-(R+1.8) && p.z<0) p.z=-(R+1.8);
   if(rr>90){p.x*=90/rr;p.z*=90/rr;}
-  for(const c of OUT_COL){const dx=p.x-c.x,dz=p.z-c.z,d=Math.hypot(dx,dz);if(d<c.r){p.x=c.x+dx/d*c.r;p.z=c.z+dz/d*c.r;}}   // don't walk through the towers
+  for(const c of OUT_COL){const dx=p.x-c.x,dz=p.z-c.z,d=Math.hypot(dx,dz);if(d<c.r){if(d<1e-4){p.x=c.x+c.r;continue;}p.x=c.x+dx/d*c.r;p.z=c.z+dz/d*c.r;}}   // don't walk through the towers
   p.y+=(window.__gh(p.x,p.z)+1.65+(mv.lengthSq()>0?Math.sin(performance.now()/160)*.04:0)-p.y)*.35;
   // Geiger clicks and camera "snow": faster and thicker when the radiation is higher (dose = how strong x how long)
   geigerT-=dt; if(geigerT<=0){geigerT=(1.6/(idx*idx*.25+.5))*(.5+Math.random()); sfx('geiger');}
@@ -1324,7 +1331,7 @@ const joy={x:0,y:0,id:null}; (function(){const J=$('joy'),K=$('knob');const upd=
   J.addEventListener('pointerup',end);J.addEventListener('pointercancel',end);
   const B=$('binoBtn');B.addEventListener('pointerdown',e=>{e.stopPropagation();if(!uiOpen)zoom=true;});['pointerup','pointercancel','pointerleave'].forEach(t=>B.addEventListener(t,()=>zoom=false));})();
 const ray=new THREE.Raycaster();
-function clickAt(e){if(ONMARS)return;const r=canvas.getBoundingClientRect();const v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(v,camera);const h=ray.intersectObjects(clickables,false)[0];
+function clickAt(e){if(ONMARS)return;const r=canvas.getBoundingClientRect();const v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(v,viewCam);const h=ray.intersectObjects(clickables,false)[0];
   if(h){const st=h.object.userData.station;const d=camera.position.distanceTo(new THREE.Vector3(st.pos.x,1.65,st.pos.z));if(d<2.6)useStation(st);else autoWalk=st;}}
 function useStation(st){autoWalk=null;sfx('tick');st.open();}
 function nearest(){let best=null;for(const st of stations){const d=Math.hypot(camera.position.x-st.pos.x,camera.position.z-st.pos.z);if(!best||d<best.d)best={st,d};}return best;}
@@ -1476,7 +1483,7 @@ const BEDS=[['lowpass',140,.11],['lowpass',140,.11],['lowpass',180,.12],['lowpas
 function setMute(m){ MUTE=m; if(IA) IA.master.gain.setTargetAtTime(m?0:1,AC.currentTime,.05); if(m)stopVoice();
   $('cineMute').innerHTML=ic(m?'mute':'vol')+(m?'Sound off':'Sound on'); }
 window.toggleMute=()=>setMute(!MUTE);
-function enterShot(){const I=INTRO,s=SHOTS[I.i]; rpass.scene=s.space?introSet.sc:scene; rpass.camera=s.space?introCam:camera; $('cineNote').style.display=s.space?'block':'none';
+function enterShot(){const I=INTRO,s=SHOTS[I.i]; rpass.scene=s.space?introSet.sc:scene; rpass.camera=s.space?introCam:viewCam; $('cineNote').style.display=s.space?'block':'none';
   const b=BEDS[I.i]; bed(b[0],b[1],b[2],I.i===3?.3:0);
   if(s.cap){$('cineFace').innerHTML=portrait(s.cap[0]);const t=$('cineText');t.innerHTML=s.cap[1];t.style.animation='none';void t.offsetWidth;t.style.animation=''; chime(); speak(I.i);}
   const parts=SHOTS.filter(x=>x.cap), pi=parts.indexOf(SHOTS.slice(0,I.i+1).reverse().find(x=>x.cap));
@@ -1511,7 +1518,7 @@ function introTick(dt){const I=INTRO, s=SHOTS[I.i]; I.t+=dt;
   if(mo) mo.setAttribute('ry',I.speaking?(lv!=null?.4+5.6*VLEV:1.2+4.6*Math.abs(Math.sin(n/75))*(.55+.45*Math.sin(n/260))).toFixed(1):'0');
   $('cineFade').style.opacity=Math.max(0,1-I.t/.45,talking?0:1-(s.d-I.t)/.45);}
 function endIntro(){ if(!INTRO) return; INTRO=null; stopVoice(); introAudio(false);
-  rpass.scene=scene; rpass.camera=camera; camera.position.set(0,1.65,-1.2); yaw=Math.PI; pitch=-.05;
+  rpass.scene=scene; rpass.camera=viewCam; camera.position.set(0,1.65,-1.2); yaw=Math.PI; pitch=-.05;
   window.__panelM.color.setRGB(1,1,1); window.__panelM.roughness=.18; snowT=0; alarmT=0;
   document.body.classList.remove('cine'); $('cine').classList.add('hide'); markSeen();
   if(S) drawScreens(); titleScreen(); }
@@ -1519,18 +1526,73 @@ const seenIntro=()=>{try{return localStorage.getItem('solbysol_intro')==='1';}ca
 window.startIntro=startIntro; window.endIntro=endIntro; window.nextPart=nextPart; window.__shot=(i,t)=>{if(!INTRO)startIntro();INTRO.i=i;INTRO.t=t||0;INTRO.hit=0;enterShot();};   // debug: jump to a shot
 addEventListener('keydown',e=>{if(!INTRO)return; if(e.key==='Escape')endIntro(); else if(e.key==='Enter'||e.key===' '||e.key==='ArrowRight'){e.preventDefault();nextPart();}});
 
+/* ===================== THE LITTLE ASTRONAUT (you) and the two views =====================
+   camera.position is still "where you are" (all game rules, collisions and debug hooks use it).
+   viewCam is only what we draw with: first person = inside the helmet, you see your gloves and body;
+   third person = behind you, you see the whole astronaut. Switch with the round button (top right) or V. */
+const astro=new THREE.Group(); scene.add(astro); const AS={walk:0};
+{const fm=c=>new THREE.MeshStandardMaterial({color:c,roughness:.85,metalness:0,flatShading:true});
+  const suit=fm('#D8C8B0'), dark=fm('#3B2A26');
+  const M=(geo,mat,x,y,z,p)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=true;p.add(m);return m;};
+  const body=AS.body=new THREE.Group(); astro.add(body);
+  AS.legs=[-1,1].map(s=>{const g=new THREE.Group(); g.position.set(s*.11,.68,0); body.add(g);           // hip pivot
+    M(new THREE.CapsuleGeometry(.095,.36,4,8),suit,0,-.3,0,g); M(new THREE.BoxGeometry(.17,.12,.27),dark,0,-.62,-.04,g); return g;});
+  M(new THREE.CapsuleGeometry(.26,.32,6,12),suit,0,1.02,0,body);                                          // chubby torso
+  M(new THREE.TorusGeometry(.25,.035,6,20),brassM,0,.82,0,body).rotation.x=Math.PI/2;                      // brass belt
+  M(new THREE.BoxGeometry(.12,.1,.05),fm('#8A2E3A'),-.13,1.12,-.25,body).rotation.y=.25;                  // crimson mission patch
+  M(new THREE.BoxGeometry(.13,.09,.04),hdr('#9FE8E0',1.6),.1,.98,-.26,body);                              // chest light
+  M(new THREE.BoxGeometry(.42,.48,.22),fm('#8A6F55'),0,1.05,.3,body);                                     // backpack
+  for(const y of [.9,1.2]) M(new THREE.BoxGeometry(.44,.04,.24),brassM,0,y,.3,body);
+  M(new THREE.SphereGeometry(.035,8,6),hdr('#FFB25B',2.5),.13,1.24,.42,body);
+  M(new THREE.TorusGeometry(.2,.04,8,24),brassM,0,1.33,0,body).rotation.x=Math.PI/2;                       // neck ring
+  AS.arms=[-1,1].map(s=>{const g=new THREE.Group(); g.position.set(s*.32,1.25,0); body.add(g);           // shoulder pivot
+    M(new THREE.CapsuleGeometry(.075,.36,4,8),suit,0,-.24,0,g); M(new THREE.SphereGeometry(.09,10,8),dark,0,-.5,0,g); return g;});
+  const head=AS.head=new THREE.Group(); head.position.y=1.65; body.add(head);                            // big round helmet (hidden in first person)
+  M(new THREE.SphereGeometry(.36,24,18),new THREE.MeshStandardMaterial({color:'#EDE4D4',roughness:.45}),0,0,0,head);
+  M(new THREE.SphereGeometry(.3,20,14),new THREE.MeshStandardMaterial({color:'#1E2440',roughness:.12,metalness:.3,emissive:'#2A3A6A',emissiveIntensity:.35}),0,.01,-.17,head).scale.set(1,.78,.55);
+  M(new THREE.BoxGeometry(.13,.12,.04),fm('#A58F7A'),.27,.08,.18,head).rotation.set(-.2,.9,.15);         // a patch on the helmet
+  M(new THREE.CylinderGeometry(.015,.015,.32,5),inkM,-.16,.42,0,head).rotation.z=.25;                     // crooked antenna
+  M(new THREE.SphereGeometry(.05,10,8),hdr('#FF9CC0',3),-.2,.58,0,head);}
+let VIEW='first'; try{ if(localStorage.getItem('solbysol_view')==='third') VIEW='third'; }catch(e){}
+function setView(v){ VIEW=v; try{localStorage.setItem('solbysol_view',v);}catch(e){}
+  document.body.classList.toggle('tp',v==='third'); const b=$('viewBtn'); b.innerHTML=ic(v==='third'?'eye':'walk'); b.setAttribute('aria-pressed',v==='third'); }
+window.toggleView=()=>{ setView(VIEW==='first'?'third':'first'); sfx('tick'); };
+setView(VIEW);
+const _t=new THREE.Vector3(), _c=new THREE.Vector3(), _last=new THREE.Vector3();
+function updateView(dt){
+  const p=camera.position, fp=VIEW==='first'||zoom||!!INTRO, gy=ONMARS?window.__gh(p.x,p.z):0;
+  const sp=dt>0?Math.min(4,Math.hypot(p.x-_last.x,p.z-_last.z)/dt):0; _last.copy(p);
+  AS.walk+=dt*sp*3.2; const k=Math.min(1,sp/2), sw=Math.sin(AS.walk)*k;
+  astro.position.set(p.x,gy,p.z); astro.rotation.y=yaw; astro.visible=!INTRO&&!!S;
+  AS.legs[0].rotation.x=sw*.6; AS.legs[1].rotation.x=-sw*.6;
+  if(fp){ // gloves held up in front of you, swaying a little as you walk
+    AS.arms.forEach((a,i)=>a.rotation.set(1.68+Math.sin(AS.walk+i*Math.PI)*.06*k,0,(i?-1:1)*.3)); AS.body.position.set(0,.08+Math.abs(sw)*.02,0); AS.head.visible=false;
+    viewCam.position.copy(p); viewCam.quaternion.copy(camera.quaternion);
+  } else {
+    AS.arms[0].rotation.set(-sw*.7,0,-.12); AS.arms[1].rotation.set(sw*.7,0,.12); AS.body.position.set(0,Math.abs(sw)*.03,0); AS.head.visible=true;
+    const fx=-Math.sin(yaw), fz=-Math.cos(yaw), cp=Math.cos(pitch), spp=Math.sin(pitch); _t.set(p.x,gy+1.45,p.z);
+    let d=3.2; for(;d>.35;d-=.15){ _c.set(_t.x-fx*cp*d,_t.y-spp*d+.35,_t.z-fz*cp*d); const rr=Math.hypot(_c.x,_c.z);   // pull in until the camera is clear
+      if(!ONMARS){ if(rr<R-.5&&_c.y<HH+.4&&_c.y>.3) break; }
+      else { _c.y=Math.max(_c.y,window.__gh(_c.x,_c.z)+.35); if(rr>R+.7&&!(Math.abs(_c.x)<1.3&&_c.z>-(R+1.9)&&_c.z<0)&&!OUT_COL.some(c=>Math.hypot(_c.x-c.x,_c.z-c.z)<c.r+.3)) break; } }
+    viewCam.position.copy(_c); viewCam.lookAt(_t.x+fx*cp*.6,_t.y+spp*.6,_t.z+fz*cp*.6);
+    if(d<.8) astro.visible=false;   // squeezed against a wall: don't draw the astronaut over the camera
+  }
+  viewCam.fov=camera.fov; viewCam.aspect=camera.aspect; viewCam.updateProjectionMatrix(); sky.position.copy(viewCam.position);
+}
+
 /* ===================== LOOP ===================== */
 const clock=new THREE.Clock(); let screenT=0, fpsAcc=0, fpsN=0, fpsCheck=false;
-function loop(){const dt=Math.min(.05,clock.getDelta()),t=clock.elapsedTime;if(INTRO)introTick(dt);else{step(dt);camera.rotation.set(pitch,yaw,0);} effects(dt,t); sky.position.copy(camera.position);
+function loop(){const dt=Math.min(.05,clock.getDelta()),t=clock.elapsedTime;if(INTRO)introTick(dt);else{step(dt);camera.rotation.set(pitch,yaw,0);} effects(dt,t);
   const tf=zoom?12:70; if(Math.abs(camera.fov-tf)>.1){camera.fov+=(tf-camera.fov)*Math.min(1,dt*8);camera.updateProjectionMatrix();}
   const cap=sightCaption(); if(cap){const pr=$('prompt');pr.style.display='block';pr.innerHTML=cap.t;}
   screenT+=dt;if(screenT>.5&&S){screenT=0;drawScreens();}
   if(fpsCheck&&!uiOpen){fpsAcc+=dt;fpsN++;if(fpsAcc>3){const fps=fpsN/fpsAcc;fpsCheck=false;if(fps<32&&Q==='high'){Q='low';applyQuality();toast('Switched to fast graphics for your computer. Press <b>G</b> to switch back.');}}}
-  composer.render(dt);requestAnimationFrame(loop);}
+  updateView(dt); composer.render(dt);requestAnimationFrame(loop);}
 addEventListener('resize',resize); window.__dbg={scene,camera,THREE}; window.__open=n=>stations.find(x=>x.name===n).open(); window.__S=()=>S; window.__cr=()=>crystal; window.__adj=(k,d)=>adj(k,d); window.__end=()=>endSol(); window.__new=()=>newMission();
-window.__frame=keepCam=>{if(!keepCam&&!INTRO)camera.rotation.set(pitch,yaw,0);composer.render(0);};   // debug: draw one frame now (e.g. in a hidden tab)
+window.__frame=keepCam=>{if(!keepCam&&!INTRO)camera.rotation.set(pitch,yaw,0);updateView(0);composer.render(0);};   // debug: draw one frame now (e.g. in a hidden tab)
 addEventListener('keydown',e=>{const k=e.key.toLowerCase();
   if(k==='p'){RETRO=!RETRO;applyQuality();toast(RETRO?'Retro pixel mode ON (P to turn off)':'Retro pixel mode OFF');}
+  if(k==='v'&&!INTRO)toggleView();
   if(k==='g'){Q=Q==='high'?'low':'high';applyQuality();toast(Q==='high'?'High graphics':'Fast graphics');}});
 applyQuality(); S={sol:1,food:4,dose:0,samples:0,battery:0,f:{rad:10,fit:8,air:9,well:8,mood:7},acts:[],alloc:{air:3,farm:3},storms:[],days:[],msgs:[],read:true,wx:WEATHER[2]}; S0();
 window.startFps=()=>{fpsCheck=true;fpsAcc=0;fpsN=0;};

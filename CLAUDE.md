@@ -74,6 +74,11 @@ Syntax check: extract the `<script type="module">` block and run `node --check`.
   Controls: Next (or Enter/Space/Right) skips one part, Skip intro (Esc) skips all, Sound on/off. Seen flag in localStorage `solbysol_intro`; "Watch intro" on the title replays.
   Sound was never heard by Claude (no audio in the preview): only checked that clips play, the mouth follows them and a missing clip doesn't stall the film.
 - Narrator: Sojourner the rover (speech bubble + 2D portrait).
+- You are a little astronaut (`astro`, built in code: cream suit, big helmet with dark visor, backpack, pink antenna tip). Two views, switched with the
+  round button top right or V, choice saved in localStorage `solbysol_view` (default first person):
+  first person = through the helmet, gloves held up in front and your body when you look down; third person = camera behind you, whole astronaut.
+  `camera.position` is still "where you are" for every rule, collision and debug hook; `viewCam` (set in `updateView()`) is only what gets drawn and
+  what clicks are aimed with. The third-person camera pulls in to stay inside the walls, outside the dome and out of the towers. Zooming (Z) always uses first person.
 - Station: bunk, greenhouse/farm, AIR & HEAT generator, treadmill with harness + bungees (low gravity), comms computer, radiation monitor, power screen, airlock. Solar panels + Curiosity model outside.
 - Health wording: "inspired by NASA's space-health research". OSDR facts (checked against the OSDR records on 14 Nov 2026):
   OSD-999/1000 simulated cosmic rays changed human brain organoids; OSD-505 space radiation changed rats' prefrontal cortex;
