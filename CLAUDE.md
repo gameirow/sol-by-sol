@@ -28,7 +28,8 @@ Team: João (code owner) and Thea (game design). Claude writes all the code.
 - `data/gale.b64` — 96×96 8-bit MOLA height map of Gale crater / Mount Sharp.
 - `assets/curiosity.js` — NASA Curiosity 3D model (glb, base64 ES module, meshopt).
 - `assets/photos.js` — 8 real Curiosity photos (base64) with kid captions, credit NASA/JPL-Caltech.
-- `assets/voice/<shot>.mp3` — Sojourner's intro voice (shots 0,1,2,4,5,6). Made by `tools/make_voice.py` (free Microsoft neural voice via `pip install edge-tts`) or recorded by the team. build.py copies them to dist.
+- `assets/voice/*.mp3` — Sojourner's intro voice: `launch.mp3` (countdown) and 0,1,2,4,5,6 (one per caption; the file name is the shot's `vo`). Made by `tools/make_voice.py` (free Microsoft neural voice via `pip install edge-tts`, voice en-US-EmmaMultilingualNeural) or recorded by the team. build.py copies them to dist.
+- `assets/planets.js` — real NASA maps for the intro (base64 JPEGs): Earth = Blue Marble (NASA Goddard SVS), Mars = colour mosaic from NASA-3D-Resources. Loaded with `import()`; a drawn fallback shows until then.
 - `tests/flow_test.py` — Playwright test of one sol (go outside → crystal → clean panels → sleep). Needs a local server; debug hooks: `__S()`, `__open(name)`, `__cr()`, `__dbg`, `__new()` (new mission), `__end()` (end the sol), `__frame(keepCam)` (draw one frame now, e.g. in a hidden tab). Not re-run since the Nov 14 rework (it hard-codes a Linux Chrome path); the same one-sol flow was clicked through by hand in the browser after the storybook rebrand (15 Nov 2026).
 - `.claude/launch.json` — preview server config (serves `dist/` on port 8765).
 
@@ -65,10 +66,13 @@ Syntax check: extract the `<script type="module">` block and run `node --check`.
 - Outside: player walks on the Gale terrain, touches a glowing yellow sulfur crystal (Curiosity found real ones in 2024) -> real NASA photo.
   Geiger clicks + suit meter show radiation and time outside. Green light marks the airlock; the Go inside button walks you home.
 - The look follows the real weather: clear, hazy, or dust storm (fog + murky sky).
-- Intro film (about 60 s, real-time Three.js, no video file): Earth -> flight -> solar storm -> Mars -> flyover of the base -> dusty panels -> inside -> mission.
-  Each shot's caption is one true fact needed for a later choice. `SHOTS`, `startIntro()`, `endIntro()`; debug `__shot(i,t)` jumps to a shot.
+- Intro film (about 70 s, real-time Three.js, no video file): launch from Kennedy Space Center at sunrise (Florida, rocket flies east over the Atlantic) -> flight (boosters, escape tower, core and upper stage separate; solar wings open) -> solar storm -> Mars with Gale crater marked -> flyover of the base -> dusty panels -> inside -> mission.
+  Each shot's caption is one true fact needed for a later choice. `SHOTS` (each has `world`: ksc / space / mars, `vo`, `bed`, `note`), `buildKSC()`, `buildIntro()`, `buildRocket()` + `rocketPose()`, `startIntro()`, `endIntro()`.
+  Debug: `__shot(i,t)` jumps to a shot (0 = launch, 1 = flight, 2 = storm, 3 = Mars, 4 = flyover, 5 = panels, 6 = inside, 7 = mission); `__itick(sec)` runs the film forward (the preview pane is too slow for real time); `__intro()` returns the film objects.
+  Look (15 Nov, João: "crispy, not foggy"): while the film plays, `introRender()` renders at full resolution (up to 2x), bloom only on very bright things, light vignette; space and launch use Neutral tone mapping, the Mars shots keep the game's look but with the clear-weather sky (`introClearSky()`). Quick cuts, a dip to black only between Earth / space / Mars. No MSAA: with the bloom pass it made black blocks.
+  No NASA logo anywhere (NASA does not allow its insignia without permission); the VAB shows the US flag only. Gale crater ring sits at 5.4 S, 137.8 E (`latLonDir`).
   First visit shows a start card ("Watch the film" / "Skip to the game"); that tap is also what lets the browser play sound.
-  Voice = recorded MP3 clips (`speak(shot)` plays assets/voice/<shot>.mp3); the portrait's mouth follows the real loudness (AnalyserNode). No clip = bubble only.
+  Voice = recorded MP3 clips (`speak(s.vo)` plays assets/voice/<vo>.mp3, at `voAt` seconds if set); the portrait's mouth follows the real loudness (AnalyserNode). No clip = bubble only.
   NEVER use the browser's speechSynthesis: João rejected it as robotic (14 Nov 2026). The spoken lines live in tools/make_voice.py; keep them in sync with SHOTS captions.
   Music pad + engine/storm/wind noise are made with WebAudio (`introAudio`, `bed`), no audio files. A shot never ends while Sojourner is still talking.
   Controls: Next (or Enter/Space/Right) skips one part, Skip intro (Esc) skips all, Sound on/off. Seen flag in localStorage `solbysol_intro`; "Watch intro" on the title replays.
@@ -103,6 +107,4 @@ Syntax check: extract the `<script type="module">` block and run `node --check`.
 1. Human playtest of a full 10 sols by a real kid, and a real phone test of walking outside (only checked in a phone-sized browser window so far).
 2. Republish the Claude artifact from the claude.ai web chat (the live link still shows the old version).
 3. Submission page + demo video.
-4. Storybook rebrand leftovers: the intro's space shots (Earth, flight, solar storm: `buildIntro()`) still have the old look. That part belongs to
-   the `intro-storybook` branch (`design/storybook-rebrand/INTRO_PROMPT.md`); the intro's base, panels and inside shots already use the new scene.
-   Both branches touch the shared caption bubble / portrait CSS, so expect a small merge there.
+4. Merging `intro-storybook` into main: both branches touch the shared caption bubble / portrait CSS, so expect a small merge there.
