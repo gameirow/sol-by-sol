@@ -903,7 +903,7 @@ function audioTick(){ const A=AUD; if(!A.on) return; const t=AC.currentTime;
 function footstep(surf){ if(!AUD.on||MUTE) return; const t=AC.currentTime, v=.8+Math.random()*.4, r=.85+Math.random()*.3;
   if(surf==='wood'){ noiseBurst(t,.09,'lowpass',900*r,.8,.32*v,.22); sweep(t,115*r,70,.13,.28*v,'sine',.15); }
   else if(surf==='stone'){ noiseBurst(t,.05,'highpass',2600*r,.7,.16*v,.08); sweep(t,430*r,380,.06,.07*v,'triangle'); sweep(t,95,60,.08,.14*v); }
-  else { noiseBurst(t,.2,'lowpass',1000*r,.5,.11*v,0,r*.8,.025); noiseBurst(t+.03,.14,'bandpass',550*r,.7,.07*v,0,r*.7,.02); sweep(t,70,50,.12,.06*v); } }   // soft sandy "shff"
+  else { noiseBurst(t,.22,'lowpass',420*r,.4,.14*v,0,r*.6,.03); noiseBurst(t+.03,.16,'lowpass',260*r,.5,.08*v,0,r*.5,.025); sweep(t,62,45,.14,.07*v); } }   // muffled sandy step, like hearing it through the suit
 // storm shutters rolling: a rattle, then a soft thud
 function shutterSnd(){ if(!AUD.on||MUTE) return; const t=AC.currentTime, n=AC.createBufferSource(), lp=AC.createBiquadFilter(), g=AC.createGain(), am=AC.createOscillator(), ag=AC.createGain(), env=AC.createGain();
   n.buffer=AUD.noise; n.loop=true; lp.type='lowpass'; lp.frequency.value=480; am.frequency.value=17; ag.gain.value=.5; g.gain.value=.5; am.connect(ag); ag.connect(g.gain);
