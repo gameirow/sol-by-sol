@@ -285,6 +285,7 @@ const INSIDE_SHARE = 0.5;        // thick walls stop storm particles and about h
 const EVA_FULL = 60;             // seconds walking outside that count as one whole working day outside
 const DUST_SOL = 0.06, DUST_STORM = 0.2, DUST_MAX = 0.6; // share of sunlight the panels lose per sol (settling dust is real, the numbers are game units)
 const SAMPLES_GOAL = 3, ACTS_PER_SOL = 2;
+const MEAL_FOOD = 2, MEAL_MOOD = 1.5;   // GAME RULE: a fresh meal from the greenhouse, once a sol: costs 2 food, cheers the crew up (not an activity)
 const FD='"IM Fell English SC",Georgia,serif', FB='Spectral,Georgia,serif';   // canvas fonts (same as --disp / --body)
 const radIndex = uGy => Math.max(0,Math.min(10,Math.round(10*Math.log(Math.max(uGy,80)/80)/Math.log(1700/80))));  // 0–10: normal day = 1, May 2024 storm = 10
 
@@ -389,7 +390,7 @@ function endSol(){
   const dusty=w[4]==='L', eva=acts.includes('eva');
   // dust: Mars dust is bad to breathe and sticks to spacesuits, so a walk in a dust storm brings it inside
   f.well = clamp10(f.well + (acts.includes('rest')?1.5:-0.8) + (S.food<=0?-2:S.food<=2?-1:0) + (dusty&&eva?-1:0));
-  f.mood = clamp10(f.mood - 1.5 + (acts.includes('call')?2.5:0) + (eva?1.5:0) + (dusty?-0.5:0));
+  f.mood = clamp10(f.mood - 1.5 + (acts.includes('call')?2.5:0) + (eva?1.5:0) + (S.ate?MEAL_MOOD:0) + (dusty?-0.5:0));
   if(eva && !S.told.radsci){S.told.radsci=1; setTimeout(()=>say('happy',`Space radiation can change brain cells. Scientists tested it on tiny lab-grown pieces of brain. So keep trips outside short!${osd('OSD-999, OSD-1000, OSD-505')}`),1500);}
   S.panelDust=Math.min(DUST_MAX,+((S.panelDust||0)+(dusty?DUST_STORM:DUST_SOL)).toFixed(2));  // dust settles on the panels every sol
   const H=health();
@@ -398,7 +399,7 @@ function endSol(){
   showReport({uGy,mSv,src,before,dFood,fail,w,need});
   if(src.length && ex>150){S.aftermath={big:ex>800};}
   if(fail){S.over=true;return}
-  S.cleaned=false; S.sol++; S.acts=[]; S.evaT=0; S.arrived=false; S.stormT=0; S.onsetT=null; S.warnT=0;
+  S.cleaned=false; S.ate=false; S.sol++; S.acts=[]; S.evaT=0; S.arrived=false; S.stormT=0; S.onsetT=null; S.warnT=0;
   if(S.sol>SOLS){S.over=true;return}
   S.alloc.air=Math.max(S.alloc.air,needAir(today()));
 }
@@ -482,7 +483,7 @@ const FACTORS=[
  ['run','Exercise','fit','Run on the treadmill to stay strong.','Real science: mice on the Space Station lost muscle and bone in 33 days. Other scientists study rats in Mars-like gravity.','OSD-342, OSD-418'],
  ['temp','Air &amp; heat','air','Give the air &amp; heat machine enough power every night.','Real data: nights in Gale crater can drop below −80°C.','Curiosity weather station'],
  ['bed','Sleep &amp; food','well','Rest, and keep the farm growing food.','Real science: spaceflight changed how two astronauts’ bodies fight germs. Some germs grown in space even got stronger.','OSD-903, OSD-943, OSD-278'],
- ['smile','Mood','mood','Call your family and go outside sometimes.','Real fact: a radio message needs 3 to 22 minutes to travel between Mars and Earth.','light speed + planet orbits']];
+ ['smile','Mood','mood','Call your family, go outside sometimes, or eat a fresh meal from the greenhouse.','Real fact: a radio message needs 3 to 22 minutes to travel between Mars and Earth.','light speed + planet orbits']];
 window.openHealth=function(){
   if(!S||uiOpen) return; const H=health();
   overlay(`<h2>${ic('heart')}CREW HEALTH · ${H.toFixed(1)}/10</h2><p>Health is the average of these 5 things. If it drops below 3, the mission ends.</p>
@@ -592,6 +593,7 @@ window.realOrGame=function(){
     'Storms and weather come from <b>different real dates</b>, mixed into one mission.',
     'Crystals <b>glow</b> and wait near the base. Panels get clean when you walk up to them.',
     'The <b>exact moment</b> a storm arrives during a sol.',
+    'A fresh meal from the greenhouse makes the crew <b>happier</b>.',
     'Sojourner talks. The real one was a small rover in 1997!'])}</ul></div>
   </div>
   <p><button class="btn" onclick="back()">BACK</button><button class="btn alt" onclick="sources()">NASA DATA</button></p>`,true);
@@ -711,6 +713,19 @@ function openRad(){
     g.fillStyle='#D9B98C'; g.fillText('S'+(i+1),x+w/2-8,H-12);}
   g.fillStyle='#F3DDB3'; g.fillText('Radiation outside each sol (0 to 10). White dot = you went outside',40,12);
 }
+function openFarm(){
+  const can=!S.ate&&S.food>=MEAL_FOOD;
+  overlay(`<h2>${ic('sprout')}GREENHOUSE</h2><p>Your plants grow food under the pink lights. Food now: <b class="${S.food<=2?'warn':''}">${S.food}/10</b>.</p>
+  <div class="row"><div class="lbl">${ic('smile')}<b>Eat a fresh meal</b><small>Happier crew · uses ${MEAL_FOOD} food · once a sol</small></div><button class="btn" ${can?'':'disabled'} onclick="eatMeal()">${S.ate?'EATEN':'EAT'}</button></div>
+  ${!S.ate&&S.food<MEAL_FOOD?'<div class="note bad">Not enough food for a meal. Give the farm lights more power!</div>':''}
+  <div class="note">The farm lights need power to grow food. Set them on the <b>POWER</b> screen.</div>
+  <p><button class="btn alt" onclick="closeOv()">CLOSE</button></p>`);
+}
+window.eatMeal=function(){
+  if(S.ate||S.food<MEAL_FOOD){sfx('no');return toast('Not enough food for a meal today.');}
+  S.food-=MEAL_FOOD; S.ate=true; eatSnd(); updateHUD(); closeOv();
+  say('happy',`Yum! Fresh food from the greenhouse makes the crew happier.`);
+};
 function openGym(){
   const done=S.acts.includes('exercise');
   overlay(`<h2>${ic('run')}TREADMILL</h2><p>Mars gravity is weak, so your muscles and bones get lazy. Running keeps them strong. The harness and bungee cords hold you down while you run.</p>
@@ -757,7 +772,7 @@ function showReport({uGy,mSv,src,before,dFood,fail,w,need}){
    <tr><td>${ic('run')}Exercise</td><td>${d('fit')} ${S.acts.includes('exercise')?'ran':'no exercise'}</td></tr>
    <tr><td>${ic('temp')}Air &amp; heat</td><td>${d('air')} ${S.alloc.air>=need?'warm':'too cold!'}</td></tr>
    <tr><td>${ic('bed')}Sleep &amp; food</td><td>${d('well')} ${S.acts.includes('rest')?'rested · ':''}food ${S.food}/10 ${dFood>0?'▲':dFood<0?'▼':''}${w[4]==='L'&&eva?' · dust on your suit':''}</td></tr>
-   <tr><td>${ic('smile')}Mood</td><td>${d('mood')} ${S.acts.includes('call')?'called home':eva?'fresh view':'missing home'}</td></tr>
+   <tr><td>${ic('smile')}Mood</td><td>${d('mood')} ${S.acts.includes('call')?'called home':eva?'fresh view':S.ate?'tasty meal':'missing home'}</td></tr>
    <tr><td>${ic('panel')}Solar panels</td><td>${S.cleaned?'cleaned today · ':''}dust now blocks ${Math.round((S.panelDust||0)*100)}% of the sunlight</td></tr>
    <tr><td>${ic('sun')}Real Mars weather</td><td>${w[1]}°C at night${w[4]==='L'?' · dust storm':''} · measured on ${fmtDate(w[0])}</td></tr>
   </table>${real}<p>${btn}</p>`,true);
@@ -882,6 +897,15 @@ function footstep(surf){ if(!AUD.on||MUTE) return; const t=AC.currentTime, v=.8+
   if(surf==='wood'){ noiseBurst(t,.09,'lowpass',900*r,.8,.32*v,.22); sweep(t,115*r,70,.13,.28*v,'sine',.15); }
   else if(surf==='stone'){ noiseBurst(t,.05,'highpass',2600*r,.7,.16*v,.08); sweep(t,430*r,380,.06,.07*v,'triangle'); sweep(t,95,60,.08,.14*v); }
   else { noiseBurst(t,.14,'bandpass',2200*r,.9,.26*v,0,r); noiseBurst(t+.025,.08,'bandpass',1100*r,1.3,.14*v,0,r); sweep(t,85,55,.1,.12*v); } }
+// storm shutters rolling: a rattle, then a soft thud
+function shutterSnd(){ if(!AUD.on||MUTE) return; const t=AC.currentTime, n=AC.createBufferSource(), lp=AC.createBiquadFilter(), g=AC.createGain(), am=AC.createOscillator(), ag=AC.createGain(), env=AC.createGain();
+  n.buffer=AUD.noise; n.loop=true; lp.type='lowpass'; lp.frequency.value=480; am.frequency.value=17; ag.gain.value=.5; g.gain.value=.5; am.connect(ag); ag.connect(g.gain);
+  env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(.32,t+.2); env.gain.setValueAtTime(.32,t+2.2); env.gain.linearRampToValueAtTime(0,t+2.8);
+  n.connect(lp); lp.connect(g); g.connect(env); audSend(env,.15); n.start(t); n.stop(t+2.9); am.start(t); am.stop(t+2.9); sweep(t+2.6,140,60,.3,.22,'sine',.2); }
+// eating: three crunchy munches and a happy little bell
+function eatSnd(){ if(!AUD.on||MUTE) return sfx('ok'); const t=AC.currentTime;
+  for(let i=0;i<3;i++){ const r=.9+Math.random()*.25; noiseBurst(t+i*.2,.11,'bandpass',1500*r,1.1,.3,.05,r); sweep(t+i*.2,160*r,90,.08,.12); }
+  bell(79,t+.7,.05,AUD.sfx,.4,1.4); bell(86,t+.82,.04,AUD.sfx,.4,1.6); }
 // using a station: a small two-note chime
 function interactSnd(){ if(!AUD.on||MUTE) return sfx('tick'); const t=AC.currentTime; bell(81,t,.07,AUD.sfx,.45,1.6); bell(88,t+.08,.05,AUD.sfx,.45,1.8); noiseBurst(t,.25,'bandpass',3200,1.5,.03,.4); }
 // near a crystal: a twinkle. Picking it up: a sparkly rising arpeggio over a warm chord
@@ -1112,6 +1136,25 @@ const glassM=new THREE.MeshPhysicalMaterial({color:'#ffd9b8',transparent:true,op
   box(len,.55,.35,winFrameM,0,.275,0,g); box(len,.45,.35,winFrameM,0,HH-.225,0,g); box(.1,HH-1,.12,winFrameM,0,HH/2,0,g);
   const gl=new THREE.Mesh(new THREE.PlaneGeometry(len,HH-1),glassM);gl.position.y=HH/2;gl.rotation.y=Math.PI;g.add(gl);
   const sill=box(len,.06,.5,brassM,0,.56,-.1,g);});
+// Window surround: the inner wall (R) and the outer shell (R+.2) leave a slot round the window. Fill it with solid wood
+// above, below and at the sides, so the window sits in a thick wall. Outside the glass: storm shutters that roll down.
+const shutters=[]; let shutF=0, shutOn=false;
+const shutM=new THREE.MeshStandardMaterial({map:canvasTex(64,256,(g,w,h)=>{for(let i=0;i<8;i++){const y=i*h/8;g.fillStyle=i%2?'#7C6A6E':'#6B5A63';g.fillRect(0,y,w,h/8);
+    g.fillStyle='#2B2233';g.fillRect(0,y,w,3);g.fillStyle='rgba(255,240,220,.18)';g.fillRect(0,y+4,w,3);g.fillStyle='#C79A5A';g.fillRect(2,y+h/16-2,4,4);g.fillRect(w-6,y+h/16-2,4,4);}},{repeat:[1,1]}),
+  roughness:.8,metalness:.2,side:THREE.DoubleSide});
+shutM.map.wrapT=THREE.RepeatWrapping;
+{const winTop=HH/2+(HH-1)/2, winBot=HH/2-(HH-1)/2;   // glass from y .5 to 2.7
+  [[-1],[1]].forEach(([s])=>{const a1=s*Math.PI/6, p0=new THREE.Vector3(0,0,R), p1=new THREE.Vector3(Math.sin(a1)*R,0,Math.cos(a1)*R), mid=p0.clone().add(p1).multiplyScalar(.5), len=p0.distanceTo(p1);
+    const h=new THREE.Group(); h.position.copy(mid); scene.add(h); h.lookAt(mid.x*2,0,mid.z*2);                  // local +z points outside
+    box(len+.04,HH+.55-(winTop+.05),.5,winFrameM,0,(HH+.55+winTop+.05)/2,.2,h);                                       // header up into the dome
+    box(len+.04,winBot+.05,.5,winFrameM,0,(winBot+.05)/2,.2,h);                                                     // sill wall
+    box(len+.12,.07,.28,brassM,0,winBot+.06,.48,h);                                                                  // outside ledge
+    box(len+.08,.26,.28,inkM,0,winTop+.18,.55,h);                                                                    // shutter roller box
+    for(const x of [-len/2+.04,len/2-.04]) box(.06,winTop-winBot+.1,.08,brassM,x,(winTop+winBot)/2,.52,h);        // shutter rails
+    const sh=new THREE.Mesh(new THREE.PlaneGeometry(len-.06,1),shutM); sh.position.set(0,winTop,.52); sh.scale.y=.001; sh.visible=false; sh.castShadow=true; h.add(sh); shutters.push(sh);});
+  for(const a of [-Math.PI/6,0,Math.PI/6]){const j=new THREE.Group(), r=a?R+.08:R+.04; j.position.set(Math.sin(a)*r,0,Math.cos(a)*r); scene.add(j); j.lookAt(Math.sin(a)*20,0,Math.cos(a)*20);
+    box(a?.34:.18,HH+.55,a?.5:.32,winFrameM,0,(HH+.55)/2,a?.05:.02,j);}                                            // thick side posts + middle post
+  shutters.top=winTop; shutters.span=winTop-winBot+.05;}
 function hazardMat(){return new THREE.MeshStandardMaterial({map:hazardTex,roughness:.6});}
 // ceiling lamps (lights)
 const lamps=[]; for(let i=0;i<3;i++){const a=i/3*Math.PI*2+Math.PI; const L=add(new THREE.PointLight('#FFC890',14,10,2)); L.position.set(Math.sin(a)*2.7,HH+.35,Math.cos(a)*2.7); lamps.push(L);}
@@ -1189,7 +1232,9 @@ const plantIM=[]; (function(){const a=THREE.MathUtils.degToRad(95), r=R-.85; con
     grp.add(im); plantIM.push(im);}
   box(.08,2.0,.65,woodM,-1.15,1,0,grp); box(.08,2.0,.65,woodM,1.15,1,0,grp);
   const pl=new THREE.PointLight('#FF8AC8',3,3.5,2); pl.position.set(0,1.5,.5); grp.add(pl);
-  const lab=labelSprite('GREENHOUSE','#FF9CC0'); lab.position.set(0,2.55,0); grp.add(lab);})();
+  const lab=labelSprite('GREENHOUSE','#FF9CC0'); lab.position.set(0,2.55,0); grp.add(lab);
+  const st={name:'greenhouse',grp,open:()=>openFarm(),color:'#FF9CC0',pos:grp.position.clone()}; stations.push(st);   // tap it: eat a fresh meal
+  grp.traverse(o=>{if(o.isMesh){o.userData.station=st;clickables.push(o);}});})();
 // oxygen tanks (state-driven bands)
 const tanks=[]; let fan=null;
 const stGen=station('air','AIR & HEAT',-163,'#8FE3DA',()=>openPower(),(g)=>{
@@ -1476,6 +1521,10 @@ function effects(dt,t){
   if(ONMARS||INTRO){ const ea=OUT.embers.geometry.attributes.position.array;for(let i=0;i<ea.length;i+=3){ea[i+1]+=dt*(.12+(i%5)*.05);ea[i]+=Math.sin(t*.6+i)*.004;if(ea[i+1]>12)ea[i+1]=0;}OUT.embers.geometry.attributes.position.needsUpdate=true;
     OUT.mists.forEach(m=>{m.position.x+=m.userData.v*dt;if(m.position.x>40)m.position.x=-40;}); }
   bulbs.forEach(b=>b.material.opacity=b.userData.o*extDim*(.7+.3*Math.sin(t*2.2+b.userData.ph)));
+  { let want=false; if(S&&S.wx&&!S.over&&!INTRO) want=stormWatch()||radIndex(outsideToday())>=6||today()[4]==='L';   // storm shutters (look only, not a game rule)
+    if(want!==shutOn){ shutOn=want; shutterSnd(); }
+    shutF+=((want?1:0)-shutF)*Math.min(1,dt*.9); const h=Math.max(.001,shutters.span*shutF);
+    shutters.forEach(s=>{s.scale.y=h; s.position.y=shutters.top-h/2; s.visible=shutF>.01;}); shutM.map.repeat.y=Math.max(.01,h/.9); }
 }
 // binocular captions: real things outside the window
 const SIGHTS=[{p:ROVER_POS.clone().setY(1),t:'That\'s <b>Curiosity</b>, NASA\'s real rover (official NASA 3D model). It landed in Gale crater in August 2012 and measured the radiation and weather used in this game!'},

@@ -53,6 +53,8 @@ Syntax check: extract the `<script type="module">` block and run `node --check`.
   - Power is solar only (no battery). Clean panels on a mild night cover everything; dust, dust storms and cold nights make it short (do NOT say "never enough", João flagged that as untrue): air & heat, farm lights, treadmill (1), family call (1).
   - Dust lands on the panels EVERY sol (-6%, -20% in a dust storm, max -60%). Cleaning means going outside = radiation + an activity slot.
   - Food: crew eats 3 a sol, each power unit on the farm grows 1. Cutting the farm today costs food tomorrow.
+  - Greenhouse (added 15 Nov, Thea): tap it to eat a fresh meal, once a sol, costs 2 food (`MEAL_FOOD`), +1.5 mood (`MEAL_MOOD`, same as going
+    outside) and so health. Not an activity; the cost is food, so eating every sol needs more farm power. The farm's power is set only on POWER.
   - Radiation: dose = how strong x how long. Inside you still get half of the everyday background; outside all of it plus any storm,
     in proportion to the time spent walking (60 s = a whole day). Staying in during a storm costs crystals, mood and clean panels.
   - Forecasts: each flare alert shows NASA's real forecast (may hit / will miss) and the report later shows what really happened.
@@ -74,6 +76,8 @@ Syntax check: extract the `<script type="module">` block and run `node --check`.
   Controls: Next (or Enter/Space/Right) skips one part, Skip intro (Esc) skips all, Sound on/off. Seen flag in localStorage `solbysol_intro`; "Watch intro" on the title replays.
   Sound was never heard by Claude (no audio in the preview): only checked that clips play, the mouth follows them and a missing clip doesn't stall the film.
 - Narrator: Sojourner the rover (speech bubble + 2D portrait).
+- Bay window: sits in a solid wooden surround (header, sill, side posts fill the slot between the inner wall R and the outer shell R+.2).
+  Storm shutters roll down outside it (with a rattle sound) during a storm watch, radiation 6+/10 or a dust storm, and roll up after. Look only, not a game rule.
 - You are a little astronaut (`astro`, built in code: cream suit, big helmet with dark visor, backpack, pink antenna tip). Two views, switched with the
   round button top right or V, choice saved in localStorage `solbysol_view` (default first person):
   first person = through the helmet, gloves held up in front and your body when you look down; third person = camera behind you, whole astronaut.
