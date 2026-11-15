@@ -9,8 +9,16 @@ Team: João (code owner) and Thea (game design). Claude writes all the code.
 - Plain language, short answers. We are not NASA scientists.
 - Kids' text must be short and sweet. No units (no µGy/mSv), no names kids don't know (e.g. InSight).
 - Must work on computer, tablet and phone.
-- Look: professional "mission control" style. NO emojis anywhere in the UI. Fonts are Barlow + Barlow Condensed (Google Fonts);
-  icons are the drawn line-icon set `ICONS` / `ic('name')` in the source. João called the old pixel-font + emoji look "AI slop" (14 Nov 2026).
+- Look: whimsical storybook / dark-fairytale style (rebrand on branch `thea-graphics-rebranding`, 15 Nov 2026): a cosy, slightly mysterious
+  Mars outpost at dusk, patched together and glowing warmly in purple fog. Kid-friendly, never horror. Full guide: `design/storybook-rebrand/STYLE_GUIDE.md`.
+  - All colours and fonts are CSS custom properties in the one `:root` block at the top of `src/index.src.html`. Change them there only.
+  - Fonts: IM Fell English SC (headings, signs, canvas labels; one weight, so no bold) + Spectral (body; numbers lining + tabular). Canvas code uses `FD` / `FB`.
+  - HUD = wooden shelf with a brass sol dial and glass vials; cards and Sojourner's bubble are parchment; buttons are gold or wood, at least 44 px.
+  - Status colours are CSS variables: bright on wood, deep inside `.card` (it overrides `--ok`/`--warnc`/`--bad`). Use `fCol`/`radCol` in HTML, `radHex` on canvases.
+  - NO emojis anywhere. Icons are the drawn line-icon set `ICONS` / `ic('name')`: brass on wood, ink on parchment.
+  - 3D: always dusk. The three weather looks (clear / hazy / dust storm, `LOOK`) carry game info and must stay clearly different.
+    The airlock beacon stays green and the crystal yellow (Sojourner's lines say "green light" and "yellow light").
+    Glows are emissive + additive sprites (`glowSprite`), not extra lights, so they look right with bloom off (touch devices run "low" quality).
 
 ## Files
 - `src/index.src.html` — the whole game (HTML + CSS + JS module, Three.js r170 from jsdelivr CDN).
@@ -21,7 +29,7 @@ Team: João (code owner) and Thea (game design). Claude writes all the code.
 - `assets/curiosity.js` — NASA Curiosity 3D model (glb, base64 ES module, meshopt).
 - `assets/photos.js` — 8 real Curiosity photos (base64) with kid captions, credit NASA/JPL-Caltech.
 - `assets/voice/<shot>.mp3` — Sojourner's intro voice (shots 0,1,2,4,5,6). Made by `tools/make_voice.py` (free Microsoft neural voice via `pip install edge-tts`) or recorded by the team. build.py copies them to dist.
-- `tests/flow_test.py` — Playwright test of one sol (go outside → crystal → clean panels → sleep). Needs a local server; debug hooks: `__S()`, `__open(name)`, `__cr()`, `__dbg`, `__new()` (new mission), `__end()` (end the sol). Not re-run since the Nov 14 rework.
+- `tests/flow_test.py` — Playwright test of one sol (go outside → crystal → clean panels → sleep). Needs a local server; debug hooks: `__S()`, `__open(name)`, `__cr()`, `__dbg`, `__new()` (new mission), `__end()` (end the sol), `__frame(keepCam)` (draw one frame now, e.g. in a hidden tab). Not re-run since the Nov 14 rework (it hard-codes a Linux Chrome path); the same one-sol flow was clicked through by hand in the browser after the storybook rebrand (15 Nov 2026).
 - `.claude/launch.json` — preview server config (serves `dist/` on port 8765).
 
 ## Build & run
@@ -95,3 +103,6 @@ Syntax check: extract the `<script type="module">` block and run `node --check`.
 1. Human playtest of a full 10 sols by a real kid, and a real phone test of walking outside (only checked in a phone-sized browser window so far).
 2. Republish the Claude artifact from the claude.ai web chat (the live link still shows the old version).
 3. Submission page + demo video.
+4. Storybook rebrand leftovers: the intro's space shots (Earth, flight, solar storm: `buildIntro()`) still have the old look. That part belongs to
+   the `intro-storybook` branch (`design/storybook-rebrand/INTRO_PROMPT.md`); the intro's base, panels and inside shots already use the new scene.
+   Both branches touch the shared caption bubble / portrait CSS, so expect a small merge there.
