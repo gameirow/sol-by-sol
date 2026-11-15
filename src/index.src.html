@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Sol by Sol: Survive on Mars</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23c8542a'/%3E%3Ccircle cx='11' cy='12' r='3' fill='%23a03f1c'/%3E%3Ccircle cx='20' cy='20' r='4' fill='%23e07a45'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --panel:rgba(13,17,24,.9); --soft:rgba(255,255,255,.05); --line:rgba(255,255,255,.13); --line2:rgba(255,255,255,.24);
+  --text:#eef1f5; --mute:#9ba7b6; --accent:#ff7a3c; --accent2:#ffb98a; --ok:#5fd394; --warnc:#ffb84d; --bad:#ff5d52; --info:#6cc3ff;
+  --disp:'Barlow Condensed','Arial Narrow',system-ui,sans-serif; --body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;height:100dvh;background:#000;color:var(--text);font-family:var(--body);overflow:hidden;user-select:none;-webkit-user-select:none;overscroll-behavior:none;touch-action:none;-webkit-font-smoothing:antialiased}
+#c{position:fixed;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
+#c.retro{image-rendering:pixelated}
+#fx{display:none;position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,#0000 0 2px,#0000001a 2px 3px),radial-gradient(ellipse at center,#0000 55%,#000a 100%)}
+body.retro #fx{display:block}
+#snow{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .4s;mix-blend-mode:screen}
+#alarm{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 120px 30px #ff1a00;opacity:0}
+#cross{position:fixed;left:50%;top:50%;width:6px;height:6px;margin:-3px;background:#fff;border-radius:50%;opacity:.55;pointer-events:none}
+a{color:var(--accent2)}
+.ic{width:1.15em;height:1.15em;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.2em}
+.warn{color:var(--bad)!important}
+
+/* ---- HUD ---- */
+#hud{position:fixed;top:12px;left:12px;right:12px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none;z-index:5}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 12px;font:500 15px/1 var(--body);display:flex;align-items:center;gap:8px;min-height:40px;font-variant-numeric:tabular-nums;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.chip b{font:700 18px/1 var(--disp);letter-spacing:.04em}
+.chip .t{color:var(--mute);font:600 12px/1 var(--disp);letter-spacing:.12em;text-transform:uppercase}
+.chip .ic{width:18px;height:18px;color:var(--accent2)}
+.chip.warn{border-color:rgba(255,93,82,.65)}.chip.warn .ic,.chip.warn .t{color:var(--bad)}
+.chip.watch{border-color:rgba(255,184,77,.75)}.chip.watch .ic,.chip.watch .t{color:var(--warnc)}
+.chip.tap{pointer-events:auto;cursor:pointer}.chip.tap:hover{border-color:var(--line2)}
+.dots{letter-spacing:3px;color:var(--accent2);font-size:11px}
+.mini{display:inline-flex;position:relative;width:26px;height:26px;border:1px solid;border-radius:7px;align-items:center;justify-content:center;overflow:hidden;background:rgba(0,0,0,.4)}
+.mini i{position:absolute;left:0;right:0;bottom:0;opacity:.32}
+.mini .ic{width:15px;height:15px;position:relative;color:#fff}
+.bar{display:inline-block;vertical-align:middle;width:96px;height:8px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .5s,background .5s}
+
+/* ---- floating hints ---- */
+#prompt{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line2);padding:10px 16px;border-radius:12px;font-size:15px;display:none;z-index:5;pointer-events:none;max-width:min(560px,92vw);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+#prompt b{color:var(--accent2)}
+#help{position:fixed;right:12px;bottom:12px;font-size:13px;color:var(--mute);background:rgba(10,13,18,.62);padding:7px 12px;border-radius:9px;z-index:5}
+#help b{color:var(--text);font-weight:600}
+#ticker{position:fixed;right:12px;bottom:50px;max-width:420px;font-size:14.5px;line-height:1.4;background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--accent);padding:10px 14px;border-radius:10px;z-index:5;display:none;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+
+/* ---- cards ---- */
+.ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 40%,rgba(6,8,12,.5),rgba(3,4,6,.86));z-index:20;padding:16px}
+.ov.hide{display:none}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 30px 90px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.07);max-width:760px;width:100%;max-height:92dvh;overflow:auto;padding:26px 28px;overflow-wrap:anywhere;scrollbar-width:thin;scrollbar-color:#ffffff33 transparent}
+.card h1{font:700 44px/1 var(--disp);letter-spacing:.1em;text-transform:uppercase;margin:0 0 10px}
+.card h2{font:700 25px/1.15 var(--disp);letter-spacing:.08em;text-transform:uppercase;margin:0 0 14px;display:flex;align-items:center;gap:10px}
+.card h2 .ic{width:26px;height:26px;color:var(--accent)}
+.card h2:not(:first-child){margin-top:22px}
+.card p,.card li{font-size:16px;line-height:1.5;color:#dde2e9;margin:10px 0}
+.card b{color:#fff;font-weight:600}
+.card ul{margin:0;padding-left:18px}.card .tile li{font-size:14.5px;line-height:1.4;margin:0 0 7px}
+.hero{max-width:820px;padding:36px 38px}
+.kicker{font:600 13px/1 var(--disp);letter-spacing:.3em;text-transform:uppercase;color:var(--accent2);margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.kicker:before{content:'';width:30px;height:2px;background:var(--accent)}
+.card h1.title{font:700 clamp(50px,10vw,92px)/.9 var(--disp);letter-spacing:.05em;text-transform:uppercase;margin:0 0 14px;color:#fff}
+.card h1.title span{color:var(--accent)}
+.lead{font-size:18px!important;max-width:58ch}
+.fine{font-size:13px!important;color:var(--mute)!important}
+.btn{font:700 16px/1 var(--disp);letter-spacing:.1em;text-transform:uppercase;background:var(--accent);color:#1d0e05;border:0;padding:13px 20px;border-radius:10px;cursor:pointer;margin:8px 8px 0 0;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s,filter .12s,background .12s;box-shadow:0 8px 22px rgba(255,122,60,.28)}
+.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}.btn:active{transform:translateY(1px)}
+.btn.alt{background:rgba(255,255,255,.04);color:var(--text);box-shadow:inset 0 0 0 1px var(--line2)}
+.btn.alt:hover{background:rgba(255,255,255,.1)}
+.btn.sm{font-size:13.5px;padding:9px 13px}
+.btn[disabled]{opacity:.45;cursor:default;filter:none;transform:none;box-shadow:inset 0 0 0 1px var(--line)}
+.pm{width:40px;height:40px;padding:0;margin:0;font:600 22px/1 var(--body)}
+.row{display:flex;align-items:center;gap:12px;margin:10px 0;flex-wrap:wrap;padding:12px 14px;background:var(--soft);border:1px solid var(--line);border-radius:12px}
+.row .btn{margin:0}
+.lbl{flex:1 1 210px;font-size:16px}
+.lbl b{font:700 18px/1.2 var(--disp);letter-spacing:.06em;text-transform:uppercase}
+.lbl .ic{color:var(--accent2);margin-right:4px}
+.lbl small{display:block;color:var(--mute);font-size:14px;margin-top:3px}
+.pips{display:flex;gap:4px}
+.pip{width:15px;height:24px;border-radius:4px;background:rgba(255,255,255,.08)}
+.pip.on{background:var(--accent)}.pip.ls{background:var(--ok)}.pip.gh{background:#ffd166}.pip.sh{background:var(--info)}.pip.sc{background:#c39bff}
+.note{background:var(--soft);border-left:3px solid var(--accent2);padding:10px 14px;border-radius:0 10px 10px 0;font-size:15px;line-height:1.45;margin:10px 0;color:#dde2e9}
+.note.bad{border-color:var(--bad);background:rgba(255,93,82,.09)}.note.good{border-color:var(--ok);background:rgba(95,211,148,.08)}
+.msg{border:1px solid var(--line);border-radius:12px;padding:11px 14px;margin:8px 0;background:var(--soft);font-size:15px;line-height:1.45}
+.msg .t{font-size:13px;color:var(--mute);margin-top:4px}
+.tag{display:inline-block;font-size:12px;color:var(--mute);border:1px solid var(--line);border-radius:99px;padding:2px 9px;margin:8px 5px 0 0}
+.stars{font-size:40px;letter-spacing:8px;color:#ffc857;line-height:1;margin:4px 0 10px}
+table.rep{width:100%;border-collapse:collapse;font-size:15px}
+table.rep td{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top;line-height:1.4}
+table.rep td:first-child{color:var(--mute);white-space:nowrap;padding-right:14px}
+table.rep.wrap td:first-child{white-space:normal;width:36%}
+table.rep td .ic{color:var(--accent2);margin-right:5px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:14px 0}
+.tile{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:13px 14px;font-size:15px;line-height:1.4;color:#d5dbe3}
+.tile>b{display:flex;align-items:center;gap:7px;font:700 15px/1.1 var(--disp);letter-spacing:.12em;text-transform:uppercase;color:var(--accent2);margin-bottom:7px}
+.tile>b .ic{width:18px;height:18px}
+.rg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rg .tile.real>b{color:var(--ok)}.rg .tile.game>b{color:var(--info)}
+.yes{color:var(--ok)}.no{color:var(--bad)}
+canvas.chart{width:100%;height:190px;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:12px}
+.link{display:flex;align-items:center;gap:12px;margin:16px 0;font:600 14px/1 var(--disp);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.track{flex:1;height:4px;background:rgba(255,255,255,.12);border-radius:4px;position:relative}
+.track i{position:absolute;top:-5px;left:0;width:14px;height:14px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent);transition:left 2.4s linear;transform:translateX(-50%)}
+
+/* ---- Sojourner ---- */
+#narr{position:fixed;left:14px;bottom:52px;z-index:30;display:flex;align-items:flex-end;gap:12px;max-width:min(580px,92vw);animation:pop .25s ease-out}
+#narr.hide{display:none}
+#narrFace{flex:0 0 84px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.6))}
+#narrFace svg{width:84px;height:84px;display:block}
+.bub{position:relative;background:#f7f3ed;color:#1b212a;border-radius:16px 16px 16px 4px;padding:13px 16px 12px;font-size:16.5px;line-height:1.45;box-shadow:0 14px 36px rgba(0,0,0,.5)}
+.bub b{font-weight:700}
+.bub .who{font:700 12px/1 var(--disp);letter-spacing:.2em;color:#c2531f;margin-bottom:6px}
+.bub .ref{display:block;font-size:12px;color:#6b7482;margin-top:5px}
+.bub .btn{margin:10px 0 0;box-shadow:none}
+@keyframes pop{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+
+/* ---- outside ---- */
+#helmet{display:none;position:fixed;inset:0;pointer-events:none;z-index:4;background:radial-gradient(ellipse 78% 72% at 50% 50%,#0000 62%,#0b1a24b3 86%,#000 100%)}
+body.outside #helmet{display:block}
+body.outside #help{display:none}
+body.outside #narr{bottom:148px}
+#backBtn{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));z-index:7;margin:0}
+body.outside #backBtn{display:inline-flex}
+#suit{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(78px + env(safe-area-inset-bottom));z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 14px;font-size:13.5px;text-align:center;pointer-events:none;width:min(320px,72vw);color:var(--mute)}
+#suit b{font:700 17px/1 var(--disp)}
+body.outside #suit{display:block}
+#suit .bar{display:block;width:100%;height:7px;margin-top:7px}
+
+/* ---- touch controls ---- */
+#joy,#binoBtn{display:none}
+body.touch #joy{display:block;position:fixed;left:calc(16px + env(safe-area-inset-left));bottom:calc(16px + env(safe-area-inset-bottom));width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.28);z-index:6;touch-action:none}
+#knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:var(--accent);opacity:.9;box-shadow:0 0 16px rgba(255,122,60,.6)}
+body.touch #binoBtn{display:flex;align-items:center;justify-content:center;position:fixed;right:calc(16px + env(safe-area-inset-right));bottom:calc(20px + env(safe-area-inset-bottom));width:60px;height:60px;border-radius:50%;font-size:24px;background:var(--panel);border:1px solid var(--line2);color:#fff;z-index:6;touch-action:none}
+body.touch #help{display:none}
+body.touch #narr{bottom:150px}
+body.touch.outside #narr{bottom:214px}
+body.touch #prompt{bottom:214px}
+body.touch #suit{bottom:calc(150px + env(safe-area-inset-bottom))}
+body.touch #backBtn{left:auto;right:calc(12px + env(safe-area-inset-right));transform:none;bottom:calc(94px + env(safe-area-inset-bottom));font-size:13px;padding:10px 12px}
+
+@media (max-width:700px){
+ #hud{top:8px;left:8px;right:8px;gap:5px}
+ .chip{font-size:13.5px;padding:4px 9px;min-height:32px;gap:6px;border-radius:10px}
+ .chip b{font-size:16px}.chip .t,.chip .mini{display:none}.chip .ic{width:16px;height:16px}
+ .mini{width:22px;height:22px;border-radius:6px}.mini .ic{width:13px;height:13px}
+ .card{padding:18px 16px;max-height:90dvh;border-radius:16px}.hero{padding:22px 18px}
+ .card h2{font-size:21px}.card p,.card li{font-size:15px}.lead{font-size:16px!important}
+ .bub{font-size:15px;padding:10px 12px}
+ #narrFace{flex-basis:60px}#narrFace svg{width:60px;height:60px}
+ .btn{font-size:14.5px;padding:12px 15px}
+ .grid3{grid-template-columns:1fr 1fr;gap:8px}.rg{grid-template-columns:1fr}
+ .tile{font-size:13.5px;padding:10px}
+ table.rep{font-size:14px}table.rep td:first-child{white-space:normal}
+ #ticker{left:8px;right:8px;max-width:none}
+}
+@media (max-height:500px){ .grid3{grid-template-columns:repeat(3,1fr)} .card{max-height:94dvh;padding:16px 18px} .card h1.title{font-size:44px} #narr{bottom:10px} }
+/* ---- intro film ---- */
+#cine{position:fixed;inset:0;z-index:40;pointer-events:none}#cine.hide{display:none}
+#cineFade{position:absolute;inset:0;background:#000;opacity:1}
+.lb{position:absolute;left:0;right:0;height:7vh;background:#000}
+#cineNote{position:absolute;left:16px;top:calc(7vh + 14px);font:600 12px/1 var(--disp);letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+#cineTop{position:absolute;top:calc(7vh + 6px);right:14px;display:flex;gap:8px}#cineTop .btn{pointer-events:auto;margin:0;background:rgba(13,17,24,.75)}
+#cineRow{display:flex;align-items:center;gap:12px;margin-top:10px}#cineRow .btn{pointer-events:auto;margin:0}
+#cineCap{position:absolute;left:50%;bottom:calc(7vh + 16px);transform:translateX(-50%);display:flex;gap:12px;align-items:flex-end;width:min(700px,94vw)}
+#cineFace{flex:0 0 84px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.6))}#cineFace svg{width:84px;height:84px;display:block}
+#cineCap .bub{flex:1;font-size:19px}
+#cineText{animation:pop .35s ease-out}
+#cineDots{display:flex;gap:5px;flex:1}#cineDots i{flex:1;height:4px;border-radius:3px;background:#1b212a22}#cineDots i.on{background:#c2531f}
+body.cine #help,body.cine #cross,body.cine #hud,body.cine #narr,body.cine #prompt,body.cine #joy,body.cine #binoBtn{display:none!important}
+@media (max-width:700px){#cineCap .bub{font-size:16px}#cineFace{flex-basis:56px}#cineFace svg{width:56px;height:56px}.lb{height:4vh}}
+.dust{width:9px;height:9px;border-radius:50%;background:#c98a52;box-shadow:0 0 0 3px rgba(201,138,82,.28)}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<canvas id="snow"></canvas>
+<div id="alarm"></div>
+<div id="fx"></div>
+<div id="cross"></div>
+<div id="hud"></div>
+<div id="prompt"></div>
+<div id="ticker"></div>
+<div id="helmet"></div><div id="suit"></div><button id="backBtn" class="btn" onclick="goInside()">Go inside</button>
+<div id="joy"><div id="knob"></div></div><button id="binoBtn" class="tbtn"></button>
+<div id="help"><b>Drag</b> to look · <b>WASD</b> or arrows to walk · <b>E</b> or click a screen to use it · hold <b>Z</b> to zoom · <b>G</b> graphics</div>
+<div id="narr" class="hide"><div id="narrFace"></div><div class="bub"><div class="who">SOJOURNER</div><div id="narrText"></div><button class="btn sm" id="narrNext" onclick="nextTalk()">Got it</button></div></div>
+<div id="cine" class="hide"><div id="cineFade"></div><div class="lb" style="top:0"></div><div class="lb" style="bottom:0"></div>
+ <div id="cineNote">Sizes and distances not to scale</div><div id="cineTop"><button id="cineMute" class="btn alt sm" onclick="toggleMute()">Sound on</button><button id="cineSkip" class="btn alt sm" onclick="endIntro()">Skip intro</button></div>
+ <div id="cineCap"><div id="cineFace"></div><div class="bub"><div class="who">SOJOURNER</div><div id="cineText"></div><div id="cineRow"><div id="cineDots"></div><button id="cineNext" class="btn sm" onclick="nextPart()">Next</button></div></div></div></div>
+<div id="ov" class="ov"><div class="card hero" id="card"><div class="kicker">Mars outpost mission</div><h1 class="title">Sol <span>by</span> Sol</h1><p class="lead">Flying to Mars…</p><p id="slow" style="display:none">Still loading… This game needs an internet connection and a modern browser (Chrome, Edge, Safari or Firefox).</p></div></div>
+<script>setTimeout(function(){var s=document.getElementById('slow');if(s&&!window.__ready)s.style.display='block';},9000);</script>
+
+<script type="module">
+import * as THREE from 'three';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
+import {ShaderPass} from 'three/addons/postprocessing/ShaderPass.js';
+import {FXAAShader} from 'three/addons/shaders/FXAAShader.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
+
+/* =====================================================================
+   REAL DATA (all values below come from NASA open data — see Sources)
+   ===================================================================== */
+// 27 real solar storms (DONKI) with the radiation Curiosity measured on Mars (RadLab, MSL-RAD, Gale crater).
+const POOL = __POOL__;
+// 27 real 10-sol weather records from Curiosity's REMS weather station, Gale crater: [date, min°C, max°C, pressure Pa, UV level V/H/M/L]
+const WEATHER = __WEATHER__;
+// Gale crater + Mount Sharp elevation, NASA MGS MOLA DEM 463 m/px (USGS), 256x256 px averaged to 96x96, 8-bit scaled.
+const TERRAIN = {b64:"__TERRAIN__", N:96, min:-4570, max:705, span:256*463.0935, center:-4500, rotY:-0.496};
+
+const SOLS = 10;                 // mission length (1 sol = 24 h 39 min)
+const BG_UGY = 115;              // background cosmic-ray dose at Gale crater, µGy/sol — Curiosity RAD, quiet days May 2024 (RadLab)
+const QF = 3.05;                 // Mars-surface quality factor (dose equivalent ÷ absorbed dose), Guo et al. 2021
+const BUDGET = +(600/860*SOLS*1.0275).toFixed(2); // mSv: this mission's share of NASA's 600 mSv career limit over an 860-day Mars mission
+const SOLAR = {V:11,H:10,M:9,L:7};  // per sol from sunlight level (REMS UV sensor). Game units.
+const UVNAME = {V:'Very high',H:'High',M:'Medium',L:'Low (dusty)'};
+const FARM_NEED = 3;             // the crew eats 3 food a sol; each given to the farm grows 1 food
+const ACT_COST = {eva:0, exercise:1, call:1, rest:0}; // spacesuit has its own battery, so dusty panels never lock you inside
+// GAME RULES (not NASA data, listed on the "Real or game?" screen):
+const INSIDE_SHARE = 0.5;        // thick walls stop storm particles and about half of the everyday cosmic rays
+const EVA_FULL = 60;             // seconds walking outside that count as one whole working day outside
+const DUST_SOL = 0.06, DUST_STORM = 0.2, DUST_MAX = 0.6; // share of sunlight the panels lose per sol (settling dust is real, the numbers are game units)
+const SAMPLES_GOAL = 3, ACTS_PER_SOL = 2;
+const radIndex = uGy => Math.max(0,Math.min(10,Math.round(10*Math.log(Math.max(uGy,80)/80)/Math.log(1700/80))));  // 0–10: normal day = 1, May 2024 storm = 10
+
+/* ===================== STATE ===================== */
+let S = null;
+const rnd = a => a[Math.floor(Math.random()*a.length)];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+const fmtDate = iso => new Date(iso).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+const clamp10 = v => Math.max(0,Math.min(10,v));
+
+function newMission(){
+  const hits = POOL.filter(s=>s.hit), misses = POOL.filter(s=>!s.hit);
+  const may = hits.find(s=>s.id==='2024-05-03');
+  const main = Math.random()<0.5 ? may : rnd(hits);
+  const picked=[main];
+  while(picked.length<3){const c = rnd(Math.random()<0.2?hits:misses); if(!picked.includes(c)) picked.push(c);}
+  const sols = shuffle([2,3,4,5,6,7,8]);
+  const storms = shuffle(picked).map((s,i)=>({s, sol:sols[i]}));
+  const wx = Math.random()<0.2 ? WEATHER[Math.random()<.6?0:1] : rnd(WEATHER.slice(2));
+  S = {sol:1, wx, storms, food:7, dose:0, samples:0, panelDust:0, evaT:0,
+       f:{rad:10, fit:7, air:9, well:7, mood:6}, acts:[], alloc:{air:needAir(wx[0]), farm:FARM_NEED},
+       days:[], msgs:[], read:true, noExercise:0, over:false, told:{}};
+  pushMsg({title:'Welcome to Gale Base!', body:`Keep your crew healthy for 10 sols (Mars days) and find <b>3 yellow crystals</b> outside.`, tags:['Mission control']});
+}
+function pushMsg(m){m.sol=S.sol;S.msgs.unshift(m);S.read=false;updateHUD();}
+const today = () => S.wx[Math.min(S.sol,SOLS)-1];
+function needAir(w){return 3 + (w[1]<-75?1:0) + (w[1]<-85?1:0);}
+const solarToday = () => Math.round(SOLAR[today()[4]]*(1-(S.panelDust||0)));
+const health = (f=S.f) => +((f.rad+f.fit+f.air+f.well+f.mood)/5).toFixed(1);
+// Where Earth and Mars really were on a date (JPL approximate orbits, flat 2D) -> distances and radio / light travel time.
+function orbits(iso){
+  const T=(Date.parse(iso)-Date.UTC(2000,0,1,12))/864e5/36525, R=Math.PI/180;
+  const pos=(a,e,L,w)=>{const M=((L-w)%360)*R; let E=M; for(let i=0;i<10;i++)E=M+e*Math.sin(E);
+    const x=a*(Math.cos(E)-e), y=a*Math.sqrt(1-e*e)*Math.sin(E), c=Math.cos(w*R), s=Math.sin(w*R); return [x*c-y*s,x*s+y*c];};
+  const E=pos(1.00000261,0.01671123,100.46457166+35999.37244981*T,102.93768193+0.32327364*T);
+  const M=pos(1.52371034,0.0933941,-4.55343205+19140.30268499*T,-23.94362959+0.44441088*T);
+  const au=Math.hypot(E[0]-M[0],E[1]-M[1]), sunAu=Math.hypot(M[0],M[1]);
+  return {km:Math.round(au*149.6), min:Math.max(1,Math.round(au*499.005/60)), sunMin:Math.round(sunAu*499.005/60)};
+}
+
+/* ===================== GAME RULES ===================== */
+function used(a=S.alloc, acts=S.acts){return a.air+a.farm+acts.reduce((s,k)=>s+ACT_COST[k],0)}
+const available = () => solarToday();
+function excessFor(sol){
+  let ex=0; const src=[];
+  for(const st of S.storms){const i=sol-st.sol; const d=st.s.marsDose; if(i>=0&&i<d.length){const e=Math.max(0,d[i]-st.s.base); if(e>0){ex+=e;src.push({st,i,val:d[i]});}}}
+  return {ex,src};
+}
+// Today's storm radiation, split in two: "old" is already here this morning (a storm still passing),
+// "fresh" is a storm that arrives during this sol. Nobody knows the moment in advance, not even Earth.
+function stormNow(){ let old=0, fresh=0;
+  for(const st of S.storms){ const i=S.sol-st.sol, d=st.s.marsDose, b=st.s.base; if(i<0||i>=d.length) continue;
+    const e=Math.max(0,d[i]-b); if(e<=0) continue; if(i===d.findIndex(v=>v-b>=25)) fresh+=e; else old+=e; }
+  return {old,fresh}; }
+const outsideToday = () => { const s=stormNow(); return BG_UGY + s.old + (S.arrived?s.fresh:0); };   // what the monitor reads right now (from Curiosity's µGy per sol)
+// Storm watch: from a flare alert until the storm arrives, or until one sol later if nothing has come.
+function stormWatch(){ if(S.arrived) return false;
+  return S.storms.some(st=>{ const first=st.s.marsDose.findIndex(v=>v-st.s.base>=25); return S.sol>=st.sol && S.sol<=st.sol+(first>=0?first:1); }); }
+const evaFrac = () => Math.min(1,(S.evaT||0)/EVA_FULL);    // share of the day spent outside
+// Dose = how strong x how long. Inside you still get a share of the everyday cosmic rays; outside you get all of it, plus any storm.
+function doseToday(){ const s=stormNow(); return BG_UGY*INSIDE_SHARE + evaFrac()*(BG_UGY*(1-INSIDE_SHARE)+s.old) + Math.min(1,(S.stormT||0)/(EVA_FULL/2))*s.fresh; }   // a storm is strongest when it first arrives, so slow runners pay double
+const osd = ids => `<span class="ref">Source: NASA Open Science Data Repository, ${ids}</span>`;
+function morningAlerts(){
+  for(const st of S.storms){
+    if(st.sol!==S.sol) continue; const s=st.s, fc=s.forecastHitsMars?'it <b>may hit Mars</b>':'it will <b>probably miss Mars</b>';
+    pushMsg({alert:true,title:`SOLAR FLARE ALERT`, body:`The Sun erupted! NASA's forecast: ${fc}. Forecasts can be wrong, so look at the radiation number before you go outside.`, tags:[`Real flare: ${fmtDate(s.flareTime)}`,`Size: ${s.flare.split(' (')[0]}`]});
+    sfx('alert'); flashAlarm(2);
+    say('alarm',`Solar flare! Its flash took <b>${orbits(today()[0]).sunMin} minutes</b> to reach Mars. The radiation storm is slower: it can take hours or days. NASA's forecast says ${fc}. <b>Storm watch</b> is on!`);
+  }
+}
+function morningTalk(){
+  const w=today(), idx=radIndex(outsideToday());
+  if(S.sol===1) return;
+  const lowK=Object.keys(S.f).filter(k=>S.f[k]<=2).map(k=>FNAME[k]);
+  if(lowK.length) say('alarm',`Danger! <b>${lowK.join(' and ')}</b> is very low. If it reaches zero, the mission ends!`);
+  if(idx>=6) say('alarm',`Radiation outside is <b>${idx}/10</b>! Stay inside today. The thick walls block the storm.`);
+  else if(stormWatch() && !S.storms.some(st=>st.sol===S.sol)) say('worried', S.told.watch?`Storm watch again today. The storm could still arrive.`:(S.told.watch=1,`<b>Storm watch.</b> The storm could arrive any moment, or never. Nobody knows, not even Earth. If you go outside, stay close to the airlock!`));
+  else if(idx>=3) say('worried',`Radiation outside is <b>${idx}/10</b> today. You can go out, but be quick: the longer you stay, the more you get.`);
+  if(used()>available()) say('worried',`Not enough power for everything today! Go to the <b>POWER</b> screen and choose what to turn down.`);
+  if(w[4]==='L' && !S.told.dust){S.told.dust=1;say('worried',`Dust storm! Less sunlight means less power. This really happened on Mars in 2018!`);}
+  else if(S.panelDust>=.17 && !S.told.panels){S.told.panels=1;say('worried',`Dust falls on our solar panels every sol, so they make less power. Go outside and walk to them to clean them!`);}
+  else if(S.panelDust>=.4 && !S.told.panels2){S.told.panels2=1;say('worried',`The solar panels are very dusty now. A real NASA Mars lander ran out of power this way in 2022!`);}
+  else if(w[1]<-80 && !S.told.cold){S.told.cold=1;say('worried',`Brrr! <b>${w[1]}°C</b> tonight. The air &amp; heat machine needs more power.`);}
+  else if(S.noExercise>=2 && !S.told.bones){S.told.bones=1;say('worried',`No exercise = weaker muscles and bones. Mice that lived on the Space Station for 33 days lost muscle and bone!${osd('OSD-342, OSD-418')}`);}
+  else if(S.f.well<6 && !S.told.ill){S.told.ill=1;say('worried',`Space travel changes how your body fights germs. Scientists saw it in the blood of two astronauts. Rest and food help!${osd('OSD-903, OSD-943')}`);}
+  else if(S.f.mood<5 && !S.told.mood){S.told.mood=1;say('worried',`The crew feels lonely. Call your family or go outside for some fresh... spacesuit air!`);}
+}
+function endSol(){
+  const a=S.alloc, acts=S.acts, f=S.f, before={...f}, w=today();
+  S.arrived=true;   // by the end of the sol the storm (if any) has arrived
+  const {ex,src}=excessFor(S.sol);
+  const uGy=doseToday(), mSv=uGy*QF/1000;
+  S.dose=+(S.dose+mSv).toFixed(3);
+  // food
+  const dFood = Math.max(0,Math.min(10,S.food+(a.farm-FARM_NEED)))-S.food;
+  S.food=S.food+dFood;
+  // the five health factors (Thea's design)
+  f.rad = clamp10(10*(1-S.dose/BUDGET));
+  f.fit = clamp10(f.fit + (acts.includes('exercise')?1.5:-1.5));
+  S.noExercise = acts.includes('exercise')?0:S.noExercise+1;
+  const need=needAir(w); f.air = clamp10(f.air + (a.air>=need?1:-2*(need-a.air)));
+  const dusty=w[4]==='L', eva=acts.includes('eva');
+  // dust: Mars dust is bad to breathe and sticks to spacesuits, so a walk in a dust storm brings it inside
+  f.well = clamp10(f.well + (acts.includes('rest')?1.5:-0.8) + (S.food<=0?-2:S.food<=2?-1:0) + (dusty&&eva?-1:0));
+  f.mood = clamp10(f.mood - 1.5 + (acts.includes('call')?2.5:0) + (eva?1.5:0) + (dusty?-0.5:0));
+  if(eva && !S.told.radsci){S.told.radsci=1; setTimeout(()=>say('happy',`Space radiation can change brain cells. Scientists tested it on tiny lab-grown pieces of brain. So keep trips outside short!${osd('OSD-999, OSD-1000, OSD-505')}`),1500);}
+  S.panelDust=Math.min(DUST_MAX,+((S.panelDust||0)+(dusty?DUST_STORM:DUST_SOL)).toFixed(2));  // dust settles on the panels every sol
+  const H=health();
+  S.days.push({sol:S.sol,uGy,unshielded:BG_UGY+ex,mSv,src,eva,frac:evaFrac(),H});
+  const fail = H<3 ? 'health' : (Object.keys(f).find(k=>f[k]<=0) || null);   // too low overall, or one need completely ignored
+  showReport({uGy,mSv,src,before,dFood,fail,w,need});
+  if(src.length && ex>150){S.aftermath={big:ex>800};}
+  if(fail){S.over=true;return}
+  S.cleaned=false; S.sol++; S.acts=[]; S.evaT=0; S.arrived=false; S.stormT=0; S.onsetT=null; S.warnT=0;
+  if(S.sol>SOLS){S.over=true;return}
+  S.alloc.air=Math.max(S.alloc.air,needAir(today()));
+}
+function doAct(k){
+  if(S.acts.includes(k)) return toast('You already did that today.');
+  if(S.acts.length>=ACTS_PER_SOL){sfx('no');return toast(`Only ${ACTS_PER_SOL} activities a day. Go to the BUNK to sleep.`);}
+  if(ACT_COST[k]>0 && used(S.alloc,[...S.acts,k])>available()){sfx('no');return toast('Not enough power today!');}
+  S.acts.push(k); sfx('ok'); updateHUD(); return true;
+}
+
+/* ===================== UI: HUD ===================== */
+// Line icons (drawn for this game, one visual language everywhere instead of emoji)
+const ICONS={
+ heart:'<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z"/>',
+ bolt:'<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
+ sprout:'<path d="M7 20h10M12 20v-8M12 12c0-3-2-5-6-5 0 4 2 6 6 5zM12 10c0-3 2-5 6-5 0 4-2 6-6 5z"/>',
+ rad:'<g fill="currentColor" stroke="none"><circle cx="12" cy="12" r="2"/><path d="M9.75 8.1 7 3.34a10 10 0 0 1 10 0L14.25 8.1a4.5 4.5 0 0 0-4.5 0zM7.5 12H2a10 10 0 0 0 5 8.66l2.75-4.76A4.5 4.5 0 0 1 7.5 12zM16.5 12H22a10 10 0 0 1-5 8.66l-2.75-4.76A4.5 4.5 0 0 0 16.5 12z"/></g>',
+ gem:'<path d="M6 3h12l4 6-10 13L2 9zM2 9h20M12 22 8.5 9 11 3M12 22l3.5-13L13 3"/>',
+ temp:'<path d="M14 4v10.5a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0z"/>',
+ sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/>',
+ wind:'<path d="M17.7 7.7A2.5 2.5 0 1 1 19.5 12H2M9.6 4.6A2 2 0 1 1 11 8H2M12.6 19.4A2 2 0 1 0 14 16H2"/>',
+ dish:'<path d="M4 10a7.3 7.3 0 0 0 10 10zM9 15l3-3M17 13a6 6 0 0 0-6-6M21 13A10 10 0 0 0 11 3"/>',
+ bed:'<path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"/>',
+ run:'<path d="M6 7v10M3 9.5v5M18 7v10M21 9.5v5M6 12h12"/>',
+ door:'<path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17M3 21h18M15 12v.01"/>',
+ book:'<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>',
+ search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+ zoom:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/>',
+ home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+ check:'<path d="M20 6 9 17l-5-5"/>',
+ x:'<path d="M18 6 6 18M6 6l12 12"/>',
+ alert:'<path d="m21.7 18-8-14a2 2 0 0 0-3.5 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3zM12 9v4M12 17h.01"/>',
+ play:'<path d="M6 3l14 9-14 9z"/>',
+ moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/>',
+ chat:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+ panel:'<path d="M5 4h14l2 11H3zM10 4l-1 11M14 4l1 11M4 9.5h16M12 15v5M8 20h8"/>',
+ map:'<path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3zM9 3v15M15 6v15"/>',
+ smile:'<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>',
+ walk:'<circle cx="12" cy="4.5" r="2"/><path d="M12 7v7M12 14l-3 7M12 14l3 7M7.5 11 12 8.5l4.5 2.5"/>',
+ redo:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/>',
+ flag:'<path d="M4 22V4M4 4h13l-2 4 2 4H4"/>',
+ game:'<rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4M8 10v4M15 13h.01M18 11h.01"/>',
+ cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+ vol:'<path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
+ mute:'<path d="M11 5 6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6"/>',
+ next:'<path d="M5 4l10 8-10 8zM19 5v14"/>'};
+const ic=n=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||''}</svg>`;
+const $=id=>document.getElementById(id);
+$('binoBtn').innerHTML=ic('zoom'); $('backBtn').innerHTML=ic('home')+'Go inside';
+const FNAME={rad:'Radiation',fit:'Exercise',air:'Air &amp; heat',well:'Sleep &amp; food',mood:'Mood'};
+const radCol = i => i>=6?'#ff5d52':i>=3?'#ffb84d':'#5fd394';
+function bar(frac,col){return `<span class="bar"><i style="width:${Math.max(0,Math.min(100,frac*100))}%;background:${col}"></i></span>`}
+const fCol = v => v>=7?'#5fd394':v>=4?'#ffb84d':'#ff5d52';
+function updateHUD(){
+  if(!S) return;
+  const H=health(), w=today(), idx=radIndex(outsideToday()), f=S.f, watch=stormWatch();
+  const mini=(n,v,t)=>`<span class="mini" title="${t}" style="border-color:${fCol(v)}">${ic(n)}<i style="height:${v*10}%;background:${fCol(v)}"></i></span>`;
+  const dots='●'.repeat(S.acts.length)+'○'.repeat(ACTS_PER_SOL-S.acts.length);
+  $('hud').innerHTML=`
+  <div class="chip"><b>SOL ${Math.min(S.sol,SOLS)}/${SOLS}</b><span class="dots" title="Activities done today">${dots}</span></div>
+  <div class="chip tap ${H<4?'warn':''}" onclick="openHealth()">${ic('heart')}<span class="t">Health</span><b style="color:${fCol(H)}">${H.toFixed(1)}</b>
+    ${mini('rad',f.rad,'Radiation')}${mini('run',f.fit,'Exercise')}${mini('temp',f.air,'Air & heat')}${mini('bed',f.well,'Sleep & food')}${mini('smile',f.mood,'Mood')}</div>
+  <div class="chip ${used()>available()?'warn':''}">${ic('bolt')}<span class="t">Power</span><b>${used()}/${available()}</b>${S.panelDust>=.05?`<span class="dust" title="Dusty solar panels"></span><span class="t">dusty</span>`:''}</div>
+  <div class="chip ${S.food<=2?'warn':''}">${ic('sprout')}<span class="t">Food</span><b>${S.food}/10</b></div>
+  <div class="chip ${idx>=6?'warn':watch?'watch':''}">${ic('rad')}<span class="t">Outside</span><b style="color:${radCol(idx)}">${idx}/10</b>${watch?ic('alert')+'<span class="t">Storm watch</span>':''}</div>
+  <div class="chip" title="Crystals found">${ic('gem')}<b>${S.samples}/${SAMPLES_GOAL}</b></div>
+  ${w[4]==='L'?`<div class="chip warn">${ic('wind')}<span class="t">Dust storm</span></div>`:''}
+  ${S.read?'':`<div class="chip warn">${ic('dish')}<span class="t">New message</span></div>`}`;
+  drawScreens();
+}
+const FACTORS=[
+ ['rad','Radiation','rad','Space radiation adds up, sol after sol. Inside is safest. Outside, be quick, and stay in when a storm hits.','Real science: space-like radiation changed lab-grown brain cells and the brains of rats.','OSD-999, OSD-1000, OSD-505'],
+ ['run','Exercise','fit','Run on the treadmill to stay strong.','Real science: mice on the Space Station lost muscle and bone in 33 days. Other scientists study rats in Mars-like gravity.','OSD-342, OSD-418'],
+ ['temp','Air &amp; heat','air','Give the air &amp; heat machine enough power every night.','Real data: nights in Gale crater can drop below −80°C.','Curiosity weather station'],
+ ['bed','Sleep &amp; food','well','Rest, and keep the farm growing food.','Real science: spaceflight changed how two astronauts’ bodies fight germs. Some germs grown in space even got stronger.','OSD-903, OSD-943, OSD-278'],
+ ['smile','Mood','mood','Call your family and go outside sometimes.','Real fact: a radio message needs 3 to 22 minutes to travel between Mars and Earth.','light speed + planet orbits']];
+window.openHealth=function(){
+  if(!S||uiOpen) return; const H=health();
+  overlay(`<h2>${ic('heart')}CREW HEALTH · ${H.toFixed(1)}/10</h2><p>Health is the average of these 5 things. If it drops below 3, the mission ends.</p>
+  ${FACTORS.map(([i,n,k,help,fact,ref])=>`<div class="msg"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b style="font:700 18px var(--disp);letter-spacing:.08em;text-transform:uppercase">${ic(i)} ${n}</b>${bar(S.f[k]/10,fCol(S.f[k]))}<b style="color:${fCol(S.f[k])}">${Math.round(S.f[k])}/10</b></div><div style="margin-top:6px">${help}</div><div class="t">${fact} Source: ${ref}.</div></div>`).join('')}
+  <p class="fine">Inspired by NASA's space-health research (OSDR). The points themselves are a game rule.</p>
+  <p><button class="btn" onclick="closeOv();sfx('ok')">CLOSE</button></p>`);
+};
+
+/* ===================== SOJOURNER (narrator) ===================== */
+const FACE={happy:{eye:'#5ad1ff',mouth:'M44 79 Q60 89 76 79'},worried:{eye:'#ffb347',mouth:'M46 84 Q60 78 74 84'},alarm:{eye:'#ff5a4f',mouth:'M48 82 L72 82'}};
+function portrait(mood){const m=FACE[mood]||FACE.happy;return `<svg viewBox="0 0 120 120" width="96" height="96" aria-label="Sojourner the rover">
+ <circle cx="60" cy="60" r="58" fill="#2a1a12" stroke="${m.eye}" stroke-width="3"/>
+ <rect x="56" y="16" width="3" height="14" fill="#c9c2b8"/><circle cx="57.5" cy="14" r="4" fill="${m.eye}"/>
+ <rect x="30" y="28" width="60" height="62" rx="12" fill="#e7e1d6" stroke="#8a8276" stroke-width="2"/>
+ <rect x="36" y="34" width="48" height="10" rx="3" fill="#2f5d86"/><path d="M42 34v10M50 34v10M58 34v10M66 34v10M74 34v10" stroke="#8fb6dd" stroke-width="1"/>
+ <circle cx="47" cy="60" r="11" fill="#1b1f24"/><circle cx="73" cy="60" r="11" fill="#1b1f24"/>
+ <circle cx="47" cy="60" r="6" fill="${m.eye}"/><circle cx="73" cy="60" r="6" fill="${m.eye}"/><circle cx="49" cy="58" r="2" fill="#fff"/><circle cx="75" cy="58" r="2" fill="#fff"/>
+ <path d="${m.mouth}" stroke="#1b1f24" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse class="mo" cx="60" cy="82" rx="9" ry="0" fill="#1b1f24"/>
+ <rect x="22" y="92" width="76" height="10" rx="4" fill="#8a8276"/>
+ <circle cx="32" cy="104" r="8" fill="#3a3f45"/><circle cx="60" cy="104" r="8" fill="#3a3f45"/><circle cx="88" cy="104" r="8" fill="#3a3f45"/>
+ <circle cx="32" cy="104" r="3" fill="#a9adb3"/><circle cx="60" cy="104" r="3" fill="#a9adb3"/><circle cx="88" cy="104" r="3" fill="#a9adb3"/></svg>`;}
+const talkQ=[]; let talking=false;
+function say(mood,text){talkQ.push({mood,text}); if(!talking) nextTalk();}
+function nextTalk(){const n=$('narr'); const m=talkQ.shift(); if(!m){n.classList.add('hide');talking=false;return;}
+  talking=true; n.classList.remove('hide'); $('narrFace').innerHTML=portrait(m.mood); $('narrText').innerHTML=m.text;
+  $('narrNext').textContent = talkQ.length ? `Next (${talkQ.length}) ▸` : 'Got it'; sfx('tick');}
+window.nextTalk=nextTalk;
+
+/* ===================== UI: OVERLAYS ===================== */
+let ovModal=false;  // modal cards (title, reports) can't be closed with Escape
+function overlay(html,modal,cls){ $('card').className='card '+(cls||''); $('card').innerHTML=html; $('card').scrollTop=0; $('ov').classList.remove('hide'); uiOpen=true; ovModal=!!modal; keys={}; }
+function closeOv(){ $('ov').classList.add('hide'); uiOpen=false; }
+window.closeOv=closeOv;
+
+function titleScreen(){
+  overlay(`<div class="kicker">Mars outpost mission · ages 7 to 12</div>
+  <h1 class="title">Sol <span>by</span> Sol</h1>
+  <p class="lead">Run a Mars base for 10 sols. A <b>sol</b> is one day on Mars. Keep your crew healthy, share out the power, dodge space storms and find crystals.</p>
+  <div class="grid3">
+   <div class="tile"><b>${ic('sun')}Real storms</b>Real solar flares, and what NASA's forecast said.</div>
+   <div class="tile"><b>${ic('temp')}Real weather</b>Mars weather and radiation, measured by a NASA rover.</div>
+   <div class="tile"><b>${ic('map')}Real place</b>Gale crater, mapped by NASA.</div>
+  </div>
+  <div id="live"></div>
+  <p style="margin-top:18px"><button class="btn" onclick="briefing()">${ic('play')}Start mission</button><button class="btn alt" onclick="realOrGame()">Real or game?</button><button class="btn alt" onclick="sources()">NASA data</button><button class="btn alt" onclick="startIntro()">Watch intro</button></p>
+  <p class="fine">NASA Space Apps Challenge 2026. The mission uses recorded NASA data, not live data.</p>`,true,'hero');
+  liveSun();
+}
+// Optional extra: today's real Sun, live from NASA DONKI. If there is no internet (or the host blocks it) the tile simply stays hidden.
+let LIVE=null;
+async function liveSun(){
+  if(LIVE===null){ LIVE=false;
+    try{ const c=new AbortController(), tm=setTimeout(()=>c.abort(),8000), iso=d=>d.toISOString().slice(0,10), now=new Date();
+      const r=await fetch(`https://ccmc.gsfc.nasa.gov/DONKI-API/get/FLR?startDate=${iso(new Date(now-30*864e5))}&endDate=${iso(now)}`,{signal:c.signal}); clearTimeout(tm);
+      const j=await r.json();
+      if(Array.isArray(j)){ const fl=j.filter(f=>f&&f.classType&&(f.peakTime||f.beginTime)).sort((a,b)=>(a.peakTime||a.beginTime)<(b.peakTime||b.beginTime)?-1:1);
+        LIVE={n:fl.length, x:fl.filter(f=>f.classType[0]==='X').length, last:fl[fl.length-1]}; }
+    }catch(e){ LIVE=false; } }
+  const el=$('live'); if(!el||!LIVE) return;
+  const size={X:'huge',M:'medium',C:'small',B:'tiny',A:'tiny'};
+  el.innerHTML=`<div class="note good" style="margin-top:12px"><b style="font:700 15px var(--disp);letter-spacing:.12em;text-transform:uppercase;color:var(--ok)">The Sun right now · live from NASA</b><br>${LIVE.n?`Latest solar flare: <b>${fmtDate(LIVE.last.peakTime||LIVE.last.beginTime)}</b>, size <b>${LIVE.last.classType}</b> (${size[LIVE.last.classType[0]]||'small'}). ${LIVE.n} flares in the last 30 days${LIVE.x?`, ${LIVE.x} of them huge`:''}.`:'No solar flares in the last 30 days. The Sun is calm.'} <span style="opacity:.7">Flares like these are what the game's storm alerts are made of.</span></div>`;
+}
+window.briefing=function(){
+  newMission(); setDayTime(); updateHUD();
+  overlay(`<h2>${ic('flag')}HOW TO PLAY</h2>
+  <div class="grid3">
+   <div class="tile"><b>${ic('gem')}GOAL</b>Stay healthy for 10 sols (Mars days) and find 3 yellow crystals outside.</div>
+   <div class="tile"><b>${ic('bolt')}POWER</b>Solar panels make your power. Dust and cold nights can leave you short. Then you choose what gets less.</div>
+   <div class="tile"><b>${ic('cal')}2 ACTIVITIES A SOL</b>Go outside · Run · Call home · Rest. Then sleep in the bunk.</div>
+   <div class="tile"><b>${ic('rad')}RADIATION</b>Invisible rays from space. 0 to 10 outside. Thick walls protect you inside.</div>
+   <div class="tile"><b>${ic('wind')}DUST</b>Dust lands on the panels every sol. Go outside to clean them.</div>
+   <div class="tile"><b>${ic('heart')}HEALTH</b>Tap the heart at the top to see what your crew needs.</div>
+  </div>
+  <p><button class="btn" onclick="closeOv();sfx('ok');startFps();intro()">${ic('play')}Let's go</button></p>`,true);
+};
+window.intro=function(){
+  say('happy',`I'm <b>Sojourner</b>, your robot buddy, named after the first rover on Mars. That robot car outside is <b>Curiosity</b>, a real NASA rover!`);
+  say('happy',`Tap the glowing screens. Pick <b>2 activities</b>, then sleep in the <b>BUNK</b>. You can't do everything, so choose well, commander!`);
+};
+window.realOrGame=function(){
+  const li=a=>a.map(x=>`<li>${x}</li>`).join('');
+  overlay(`<h2>${ic('search')}REAL OR GAME?</h2>
+  <div class="rg">
+   <div class="tile real"><b>${ic('check')}Real (from NASA)</b><ul>${li([
+    'Every <b>solar flare</b> really happened (2015 to 2024). So did NASA\'s forecast for Mars, right or wrong!',
+    'The <b>radiation</b> is what the Curiosity rover really measured on Mars on those days.',
+    'The <b>weather</b>: real temperatures and sunlight, 10 sols in a row. The 2018 dust storm too.',
+    'The <b>land</b>: Gale crater and Mount Sharp, from a NASA height map.',
+    'The <b>photos</b> and the Curiosity 3D model.',
+    'The <b>radio delay</b>: worked out from where Earth and Mars really were that day.',
+    '<b>Dust</b> really covers solar panels on Mars.',
+    'Warnings from Earth really do arrive <b>minutes late</b>.',
+    'Curiosity really found <b>yellow sulfur crystals</b> in 2024.',
+    'The <b>health facts</b> come from real space studies.'])}</ul></div>
+   <div class="tile game"><b>${ic('game')}Game rules (made up)</b><ul>${li([
+    'The <b>base</b>. No people live on Mars yet!',
+    '<b>Power, food and health points</b> are simple game numbers.',
+    'The <b>0 to 10</b> radiation scale. We made it from the real numbers.',
+    'Walls block storms and <b>half</b> of the everyday radiation. Real bases would use thick walls or Mars soil.',
+    '<b>1 minute</b> outside counts as a whole day outside.',
+    'Storms and weather come from <b>different real dates</b>, mixed into one mission.',
+    'Crystals <b>glow</b> and wait near the base. Panels get clean when you walk up to them.',
+    'The <b>exact moment</b> a storm arrives during a sol.',
+    'Sojourner talks. The real one was a small rover in 1997!'])}</ul></div>
+  </div>
+  <p><button class="btn" onclick="back()">BACK</button><button class="btn alt" onclick="sources()">NASA DATA</button></p>`,true);
+};
+window.sources=function(){
+  const o=n=>`<a href="https://osdr.nasa.gov/bio/repo/data/studies/OSD-${n}" target="_blank" rel="noopener">OSD-${n}</a>`;
+  overlay(`<h2>${ic('book')}WHERE THE DATA COMES FROM</h2>
+  <table class="rep wrap">
+  <tr><td>Solar flares, storm clouds, forecasts for Mars</td><td>NASA CCMC <b>DONKI</b>: FLR, SEP, CMEAnalysis, WSA-ENLIL. 27 real events, 2015–2024. <a href="https://ccmc.gsfc.nasa.gov/tools/DONKI/" target="_blank" rel="noopener">link</a></td></tr>
+  <tr><td>Radiation on Mars (each storm + normal days)</td><td>NASA OSDR <b>RadLab</b>: Curiosity MSL-RAD daily absorbed dose, Gale crater. <a href="https://visualization.osdr.nasa.gov/radlab/gui/data-api/" target="_blank" rel="noopener">link</a></td></tr>
+  <tr><td>Temperature, sunlight (dust)</td><td>Curiosity <b>REMS</b> weather station, Gale crater (NASA/JPL-Caltech, CAB). 27 real 10-sol windows, 2013–2026. <a href="https://mars.nasa.gov/msl/weather/" target="_blank" rel="noopener">link</a></td></tr>
+  <tr><td>Gale crater &amp; Mount Sharp terrain</td><td>NASA <b>MGS MOLA</b> elevation map, 463 m/pixel (USGS Astrogeology). <a href="https://trek.nasa.gov/mars/" target="_blank" rel="noopener">Mars Trek</a></td></tr>
+  <tr><td>Mars photos found outside</td><td>NASA Image and Video Library: Curiosity images (NASA/JPL-Caltech, PIA numbers shown). <a href="https://images.nasa.gov" target="_blank" rel="noopener">link</a></td></tr>
+  <tr><td>Curiosity rover 3D model</td><td>NASA 3D Resources. <a href="https://github.com/nasa/NASA-3D-Resources" target="_blank" rel="noopener">link</a></td></tr>
+  <tr><td>Health: inspired by NASA's space-health research (<b>OSDR</b>)</td><td>
+   ${o(999)}, ${o(1000)}: simulated cosmic rays changed human brain organoids (lab-grown tissue). ${o(505)}: space radiation changed the prefrontal cortex of rats.<br>
+   ${o(342)}: mice lost muscle and bone during 33 days on the Space Station. ${o(418)}: leg muscle of rats in simulated Mars gravity (40% weight).<br>
+   ${o(903)}, ${o(943)}: immune-response changes in the blood of two astronauts after spaceflight. ${o(278)}: a bacterium grown on the Space Station became more harmful to fruit flies.</td></tr>
+  <tr><td>Radio delay, flare light travel time</td><td>Speed of light × the real Earth–Mars and Sun–Mars distance on the mission's date (JPL approximate planet orbits).</td></tr>
+  <tr><td>Radiation limit 600 mSv per career</td><td>NASA-STD-3001 Vol. 1 (NASA OCHMO)</td></tr>
+  <tr><td>Converting Gy → Sv on Mars (×3.05)</td><td>Guo et al. 2021, Mars-surface quality factor</td></tr>
+  <tr><td>"The Sun right now" on the title screen</td><td>The only <b>live</b> data: NASA DONKI FLR, last 30 days. Everything in the mission itself is recorded data.</td></tr>
+  </table>
+  <div class="note"><b>Why these datasets:</b> DONKI tells us when the Sun erupted and what NASA forecast; RadLab tells us what actually reached the ground on Mars. Putting the two side by side lets players feel that a forecast is not a promise. REMS gives the cold and the dust that decide how much power the base has.</div>
+  <div class="note"><b>Honest simplifications:</b> power, food and health points are game units. The 0–10 radiation scale is a logarithmic index of Curiosity's daily dose (quiet day ≈ 1, 20 May 2024 storm = 10). Inside the base, walls are treated as blocking storm particles and half of the everyday cosmic rays; outside you get the full measured dose in proportion to the time you stay out (one minute of play = a full day outside). Health uses this mission's share of NASA's 600 mSv career limit. Storms and weather come from different real dates, mixed into one mission. Solar power follows the sunlight level from Curiosity's UV sensor, minus dust on the panels.</div>
+  <p><button class="btn" onclick="back()">BACK</button><button class="btn alt" onclick="realOrGame()">REAL OR GAME?</button></p>`,true);
+};
+window.titleScreen=titleScreen;
+
+/* ----- station panels ----- */
+function openPower(){
+  const a=S.alloc, w=today(), need=needAir(w), u=used(), av=available(), dust=S.panelDust||0, dF=a.farm-FARM_NEED;
+  const pips=(n,max,cls)=>`<div class="pips">${Array.from({length:max},(_,i)=>`<div class="pip ${i<n?cls:''}"></div>`).join('')}</div>`;
+  const row=(k,label,sub,n,max,cls)=>`<div class="row"><div class="lbl">${label}<small>${sub}</small></div>
+    <button class="btn alt pm" onclick="adj('${k}',-1)">−</button>${pips(n,max,cls)}<button class="btn alt pm" onclick="adj('${k}',1)">+</button></div>`;
+  const actCost=S.acts.reduce((s,k)=>s+ACT_COST[k],0);
+  overlay(`<h2>${ic('bolt')}POWER · SOL ${S.sol}</h2>
+  <p>Today your solar panels make <b>${av} power</b>. You are using <b class="${u>av?'warn':''}">${u}</b>. Choose where it goes!</p>
+  ${dust>=.05?`<div class="note">Dust blocks <b>${Math.round(dust*100)}%</b> of the sunlight on your panels, and more lands every sol. Go outside and walk to them to clean them.</div>`:''}
+  ${row('air',ic('temp')+'<b>Air &amp; heat machine</b>',`${w[1]}°C tonight, needs ${need} · ${a.air>=need?'warm and safe':'<span class="warn">too cold! health drops</span>'}`,a.air,6,'ls')}
+  ${row('farm',ic('sprout')+'<b>Farm lights</b>',`crew eats ${FARM_NEED} food a sol · ${dF===0?'food stays the same':dF>0?`+${dF} food tonight`:`<span class="warn">${dF} food tonight</span>`}`,a.farm,5,'gh')}
+  <div class="note">The treadmill and a call home use 1 power each. Activities today: <b>${actCost} power</b></div>
+  ${u>av?'<div class="note bad">You are using more power than you have! Turn something down.</div>':''}
+  <p><button class="btn" onclick="closeOv();sfx('ok')">DONE</button></p>`);
+}
+window.adj=function(k,d){
+  const a={...S.alloc};
+  a[k]=Math.max(0,Math.min(k==='air'?6:5,a[k]+d));
+  if(d>0&&used(a)>available()){sfx('no');toast('Not enough power for that! Turn something else down first.');return;}
+  S.alloc=a; sfx('tick'); openPower(); updateHUD();
+};
+function openComms(){
+  S.read=true; updateHUD();
+  const called=S.acts.includes('call'), o=orbits(today()[0]);
+  overlay(`<h2>${ic('dish')}COMMS · EARTH LINK</h2>
+  <div class="note">Today Earth is <b>${o.km} million km</b> away. A radio message needs <b>${o.min} minutes</b> to get there, and the answer needs ${o.min} more.</div>
+  <div class="row"><div class="lbl">${ic('chat')}<b>Call your family</b><small>Happier crew · costs 1 power</small></div><button class="btn" ${called?'disabled':''} onclick="act('call')">${called?'CALLED':'CALL'}</button></div>
+  ${S.msgs.map(m=>`<div class="msg" style="${m.alert?'border-color:#ff5a4f':''}"><div class="t">Sol ${m.sol}</div><b>${m.title}</b><div style="margin-top:6px">${m.body}</div><div>${(m.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div></div>`).join('')}
+  <p><button class="btn" onclick="closeOv();sfx('ok')">CLOSE</button><button class="btn alt sm" onclick="realOrGame()">REAL OR GAME?</button><button class="btn alt sm" onclick="sources()">NASA DATA</button></p>`);
+}
+window.back=function(){ if(!S) titleScreen(); else if(S.over) endScreen(S.fail,true); else closeOv(); };
+window.act=function(k){
+  if(!doAct(k)) return;
+  closeOv();
+  if(k==='call') callHome();
+  if(k==='exercise'){ if(S.told.gym) say('happy',`Great run! Exercise keeps you strong in low gravity.`);
+    else {S.told.gym=1; say('happy',`Great run! On Mars you weigh only about a third of your Earth weight. The bungee cords pull you down, so your bones and muscles still work hard. Astronauts on the Space Station run like this too!`);} }
+  if(k==='rest') say('happy',`Good rest helps your body stay healthy.`);
+  if(k==='eva') goOutside();
+};
+const REPLIES=['We saw Mars in the night sky and waved at you!','The dog misses you and sleeps on your bed now!','Grandma asks: is the potato farm growing?','We put your rocket drawing on the fridge!','Everyone at school asks about you. We are so proud!'];
+function callHome(){
+  const o=orbits(today()[0]);
+  overlay(`<h2>${ic('chat')}CALLING HOME</h2>
+  <p>Today Earth is <b>${o.km} million km</b> away. Radio waves fly as fast as light, and still need <b>${o.min} minutes</b> to get there!</p>
+  <div class="link"><span>Mars</span><div class="track"><i id="sig"></i></div><span>Earth</span></div>
+  <p id="callTxt">Sending your hello…</p>
+  <p><button class="btn" id="callBtn" disabled onclick="closeOv();sfx('ok');afterCall()">WAIT…</button></p>`,true);
+  const step=(ms,fn)=>setTimeout(()=>{ if($('sig')) fn(); },ms);
+  step(80,()=>{$('sig').style.left='100%';});
+  step(2600,()=>{$('callTxt').innerHTML=`Your hello arrived after <b>${o.min} minutes</b>. Now the answer flies back…`;$('sig').textContent='';$('sig').style.left='0%';sfx('tick');});
+  step(5200,()=>{$('callTxt').innerHTML=`The answer is here! That took <b>${o.min*2} minutes</b> in total.`;const b=$('callBtn');b.disabled=false;b.textContent='READ IT';sfx('ok');});
+}
+window.afterCall=function(){
+  say('happy',` "${rnd(REPLIES)}"`);
+  if(!S.told.delay){S.told.delay=1;say('happy',`With a delay like that, Earth can't help you quickly. On Mars, <b>you</b> have to make the big decisions!`);}
+};
+let PHOTOS=null;
+async function showPhoto(){
+  try{ if(!PHOTOS) PHOTOS=(await import('./assets/photos.js')).default; }catch(e){ afterPhoto(); return; }
+  S.seen=S.seen||[]; const left=PHOTOS.filter(p=>!S.seen.includes(p.id)); const p=left.find(x=>x.id==='PIA26210')||rnd(left.length?left:PHOTOS); if(!S.seen.includes(p.id)) S.seen.push(p.id);
+  overlay(`<h2>${ic('gem')}CRYSTAL ${S.samples}/${SAMPLES_GOAL}!</h2><p>You found a yellow <b>sulfur crystal</b>, like the ones NASA's Curiosity rover really found on Mars in 2024! Your prize is a real photo from the rover:</p>
+  <img src="${p.src}" alt="NASA Curiosity photo ${p.id}" style="width:100%;max-height:36vh;object-fit:contain;border-radius:8px;border:2px solid #ff8a3d55;background:#000">
+  <div class="note">${p.text}</div>
+  <p style="font-size:12px;opacity:.75">Photo: NASA/JPL-Caltech · ${p.id} · ${p.date} · Photos found: ${S.seen.length}/${PHOTOS.length}</p>
+  <p><button class="btn" onclick="closeOv();sfx('ok');afterPhoto()">COOL!</button></p>`);
+  sfx('ok');
+}
+window.afterPhoto=function(){
+  say('happy', (S.samples>=SAMPLES_GOAL?`That's all ${SAMPLES_GOAL} crystals!`:`Crystal ${S.samples}/${SAMPLES_GOAL}!`)+(S.panelDust>=.05?` Clean the solar panels, then head back to the airlock.`:` Now head back to the airlock (the green light).`));
+}
+function openRad(){
+  const idx=radIndex(outsideToday()), share=Math.min(1,S.dose/BUDGET);
+  const seg=Array.from({length:11},(_,i)=>`<div style="flex:1;height:26px;border-radius:4px;background:${i<=idx?radCol(i):'#ffffff14'};display:flex;align-items:center;justify-content:center;font-size:11px;color:#000">${i}</div>`).join('');
+  overlay(`<h2>${ic('rad')}RADIATION MONITOR</h2>
+  <p style="font-size:18px">Outside right now: <b style="font-size:26px;color:${radCol(idx)}">${idx}/10</b> &nbsp;·&nbsp; Inside the base: <b style="color:var(--ok)">very low</b></p>
+  <div style="display:flex;gap:3px;margin:8px 0 14px">${seg}</div>
+  <div class="note">Radiation is invisible energy from space. Too much <b>hurts your body</b>. The thick walls block storms and about half of the everyday rays. Outside you get all of it, and the longer you stay out, the more you get. When the Sun has a <b>solar flare</b>, it can jump up to 10/10!</div>
+  <p>Radiation your crew has soaked up so far: ${bar(share,fCol(10-share*10))} <b>${Math.round(share*100)}%</b> of the limit for this trip.</p>
+  <canvas class="chart" id="rchart" width="700" height="190"></canvas>
+  <p style="font-size:12px;opacity:.7">Real numbers measured on Mars by NASA's Curiosity rover, turned into a simple 0–10 scale. The limit comes from NASA's rules for astronauts.</p>
+  <p><button class="btn" onclick="closeOv();sfx('ok')">CLOSE</button></p>`);
+  const cv=$('rchart'), g=cv.getContext('2d'); const W=cv.width,H=cv.height; g.font='600 13px Barlow, sans-serif';
+  for(let i=0;i<SOLS;i++){const x=40+i*(W-60)/SOLS, w=(W-60)/SOLS-8, d=S.days[i];
+    g.fillStyle='#ffffff10'; g.fillRect(x,22,w,H-52);
+    if(d){const v=radIndex(d.unshielded), h=(H-45)*v/10; g.fillStyle=radCol(v); g.fillRect(x,H-30-h,w,Math.max(2,h)); g.fillStyle='#fff'; g.fillText(v,x+w/2-4,H-34-h); if(d.eva){g.beginPath();g.arc(x+w/2,24,4,0,7);g.fill();}}
+    g.fillStyle='#ffe9d6aa'; g.fillText('S'+(i+1),x+w/2-8,H-12);}
+  g.fillStyle='#ffe9d6'; g.fillText('Radiation outside each sol (0 to 10). White dot = you went outside',40,12);
+}
+function openGym(){
+  const done=S.acts.includes('exercise');
+  overlay(`<h2>${ic('run')}TREADMILL</h2><p>Mars gravity is weak, so your muscles and bones get lazy. Running keeps them strong. The harness and bungee cords hold you down while you run.</p>
+  <div class="row"><div class="lbl">${ic('run')}<b>Run on the treadmill</b><small>Stronger muscles and bones · costs 1 power</small></div><button class="btn" ${done?'disabled':''} onclick="act('exercise')">${done?'DONE':'RUN!'}</button></div>
+  <p><button class="btn alt" onclick="closeOv()">CLOSE</button></p>`);
+}
+function openAirlock(){
+  const idx=radIndex(outsideToday()), done=S.acts.includes('eva');
+  overlay(`<h2>${ic('door')}AIRLOCK · GO OUTSIDE</h2><p>Put on your spacesuit! Find a yellow crystal ${S.samples}/${SAMPLES_GOAL}${S.panelDust>=.05?' and clean the dusty solar panels':''}.</p>
+  <div class="note ${idx>=6?'bad':''}">Radiation outside right now: <b>${idx}/10</b>. ${idx>=6?'Danger! A solar storm is hitting Mars. Better wait for another sol.':idx>=3?'Higher than normal. Be very quick!':'Low. Still, the longer you stay out, the more you get.'}</div>
+  ${stormWatch()?'<div class="note bad"><b>Storm watch.</b> A solar storm could arrive while you are out. Stay close to the airlock and run back if the alarm sounds.</div>':''}
+  ${today()[4]==='L'?'<div class="note">Dust storm outside. Dust sticks to your suit and comes back in with you.</div>':''}
+  <div class="row"><div class="lbl">${ic('walk')}<b>Go outside</b><small>Happier crew · a crystal · the suit has its own battery</small></div><button class="btn" ${done?'disabled':''} onclick="act('eva')">${done?'DONE':'GO OUTSIDE'}</button></div>
+  <p><button class="btn alt" onclick="closeOv()">CLOSE</button></p>`);
+}
+function openBunk(){
+  if(used()>available()){sfx('no');return toast('You are using more power than you have! Fix it at the POWER screen.');}
+  const canRest=!S.acts.includes('rest')&&S.acts.length<ACTS_PER_SOL, a=S.alloc;
+  overlay(`<h2>${ic('bed')}BUNK · SOL ${S.sol}</h2>
+  <div class="row"><div class="lbl">${ic('bed')}<b>Take extra rest</b><small>Helps the crew stay healthy · no power needed</small></div><button class="btn" ${canRest?'':'disabled'} onclick="act('rest')">${S.acts.includes('rest')?'RESTED':'REST'}</button></div>
+  <p>Today: ${S.acts.length?S.acts.map(k=>({eva:'outside',exercise:'exercise',call:'family call',rest:'rest'})[k]).join(' · '):'no activities yet'}${S.acts.length<ACTS_PER_SOL?` · you can still do ${ACTS_PER_SOL-S.acts.length} more`:''}</p>
+  ${a.air<needAir(today())?'<div class="note bad">The air &amp; heat machine has less power than tonight needs.</div>':''}
+  ${a.farm<FARM_NEED?`<div class="note">The farm lights are low: food will drop by ${FARM_NEED-a.farm} tonight.</div>`:''}
+  <p><button class="btn" onclick="sleepNow()">${ic('moon')}End sol ${S.sol}</button><button class="btn alt" onclick="closeOv()">NOT YET</button></p>`);
+}
+window.sleepNow=function(){ if(ONMARS) return; closeOv(); fadeSleep(()=>{ endSol(); }); };
+
+function showReport({uGy,mSv,src,before,dFood,fail,w,need}){
+  const f=S.f, eva=S.acts.includes('eva'), fr=evaFrac(), idx=radIndex(outsideToday()); const d=k=>{const v=f[k]-before[k];return `<b style="color:${v>=0?'#5fd394':'#ff5d52'}">${v>=0?'▲':'▼'}</b>`;};
+  const howLong=fr<.4?'a short time':fr<.8?'a while':'a long time';
+  let real='';
+  for(const s of src){const st=s.st.s; if(s.val-st.base<25) continue;
+    const first=st.marsDose.findIndex(v=>v-st.base>=25)===s.i;
+    real+=`<div class="note ${(first?S.stormT>0:eva)?'bad':'good'}"><b>${first?'The solar storm hit Mars!':'The solar storm is still passing Mars.'}</b> Radiation outside went up to ${idx}/10. ${first&&!st.forecastHitsMars?'Surprise: the forecast said it would miss! ':''}${first?(S.stormT>0?`It caught you outside for ${S.stormT<8?'a moment':S.stormT<20?'a while':'a long time'}.`:eva?'You were already back inside. Lucky!':'You stayed behind the thick walls. Safe!')+` Earth's warning needed ${orbits(w[0]).min} minutes to arrive, so your own monitor saw it first.`:eva?`You were outside for ${howLong}.`:'You stayed behind the thick walls. Safe!'}</div>`;}
+  for(const st of S.storms) if(!st.s.hit && S.sol===st.sol+1) real+=`<div class="note good">The solar storm from Sol ${st.sol} <b>missed Mars</b>. ${st.s.forecastHitsMars?'The forecast said it might hit. Forecasts are not perfect!':'Just like the forecast said.'}</div>`;
+  const H=health(); let head, btn;
+  const WHY={health:"Your crew's health got too low.",rad:'Your crew reached the radiation limit for this trip.',fit:'Muscles and bones got too weak without exercise.',air:'The base got too cold for too long.',well:'The crew got too ill and tired.',mood:'The crew got too lonely and sad.'};
+  if(fail){head=`<h2>${ic('alert')}MISSION OVER</h2><div class="note bad">${WHY[fail]} Time to go home to Earth.</div>`;btn=`<button class="btn" onclick="endScreen('${fail}')">SEE RESULTS</button>`;}
+  else {head=`<h2>${ic('moon')}END OF SOL ${S.sol}</h2>`; btn = S.sol>=SOLS?`<button class="btn" onclick="endScreen()">FINISH</button>`:`<button class="btn" onclick="nextMorning()">${ic('sun')}Next sol</button>`;}
+  overlay(`${head}
+  <p style="font:700 24px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin:0 0 6px">${ic('heart')} Health <b style="color:${fCol(H)}">${H}/10</b></p>
+  <table class="rep">
+   <tr><td>${ic('rad')}Radiation</td><td>${d('rad')} ${eva?`outside for ${howLong} (${idx}/10)`:'inside all sol, only a tiny bit'}</td></tr>
+   <tr><td>${ic('run')}Exercise</td><td>${d('fit')} ${S.acts.includes('exercise')?'ran':'no exercise'}</td></tr>
+   <tr><td>${ic('temp')}Air &amp; heat</td><td>${d('air')} ${S.alloc.air>=need?'warm':'too cold!'}</td></tr>
+   <tr><td>${ic('bed')}Sleep &amp; food</td><td>${d('well')} ${S.acts.includes('rest')?'rested · ':''}food ${S.food}/10 ${dFood>0?'▲':dFood<0?'▼':''}${w[4]==='L'&&eva?' · dust on your suit':''}</td></tr>
+   <tr><td>${ic('smile')}Mood</td><td>${d('mood')} ${S.acts.includes('call')?'called home':eva?'fresh view':'missing home'}</td></tr>
+   <tr><td>${ic('panel')}Solar panels</td><td>${S.cleaned?'cleaned today · ':''}dust now blocks ${Math.round((S.panelDust||0)*100)}% of the sunlight</td></tr>
+   <tr><td>${ic('sun')}Real Mars weather</td><td>${w[1]}°C at night${w[4]==='L'?' · dust storm':''} · measured on ${fmtDate(w[0])}</td></tr>
+  </table>${real}<p>${btn}</p>`,true);
+  if(real) sfx(eva&&idx>=3?'alarm':'ok'); updateHUD();
+}
+window.nextMorning=function(){ S.cleaned=false;
+  closeOv(); setDayTime(); morningAlerts(); morningTalk();
+  if(S.aftermath){ startSnow(S.aftermath.big?6:3); toast(S.aftermath.big?'Huge radiation spike last night! Cameras are full of "snow", just like Curiosity\'s images on 20 May 2024.':'Radiation spike detected last night.'); S.aftermath=null; }
+  updateHUD();
+};
+window.endScreen=function(fail,quiet){
+  S.over=true; S.fail=fail||'';
+  const survived=!fail, H=health(), ck=b=>`<span class="${b?'yes':'no'}">${ic(b?'check':'x')}</span>`;
+  const st=[survived, survived&&S.samples>=SAMPLES_GOAL, survived&&H>=7];
+  const n=st.filter(Boolean).length;
+  const rows=S.storms.sort((a,b)=>a.sol-b.sol).map(x=>`<tr><td>Sol ${x.sol}</td><td>Real flare of ${fmtDate(x.s.flareTime)}</td><td>forecast: ${x.s.forecastHitsMars?'may hit':'will miss'}</td><td>${x.s.hit?'<b style="color:var(--accent)">hit Mars</b>':'missed Mars'}</td></tr>`).join('');
+  overlay(`<h2>${ic(survived?'flag':'alert')}${survived?'YOU DID IT!':'MISSION OVER'}</h2>
+  <div class="stars">${'★'.repeat(n)}${'☆'.repeat(3-n)}</div>
+  <p>${ck(st[0])} Survived 10 sols<br>${ck(st[1])} Found ${SAMPLES_GOAL} crystals (${S.samples})<br>${ck(st[2])} Health 7+ at the end (${H})<br>${ic('gem')} NASA photos found: ${(S.seen||[]).length}/8</p>
+  <div class="note good"><b>Real Mars crews will juggle the same things:</b><br>power is limited, so every use is planned · radiation adds up, so time outside is precious · Earth is minutes away, so the crew decides alone.</div>
+  <h2>${ic('sun')}THESE STORMS REALLY HAPPENED!</h2>
+  <table class="rep">${rows}</table>
+  <p style="font-size:13px;opacity:.8">Your weather was really measured on Mars from ${fmtDate(S.wx[0][0])} to ${fmtDate(S.wx[SOLS-1][0])}.</p>
+  <p><button class="btn" onclick="briefing()">${ic('redo')}Play again</button><button class="btn alt" onclick="realOrGame()">REAL OR GAME?</button><button class="btn alt" onclick="sources()">NASA DATA</button></p>`,true);
+  if(quiet) return;
+  say(survived?'happy':'worried', survived?`Amazing, commander! Every mission is different. Try again and beat your stars!`:`Space is hard! Try again, every mission is different.`);
+  sfx(survived?'win':'alarm');
+};
+function toast(t){const e=$('ticker');e.innerHTML=t;e.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(()=>e.style.display='none',6000);}
+
+/* ===================== AUDIO ===================== */
+let AC=null;
+function sfx(k){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime;
+  const tone=(f,d,type='square',v=.05,at=0)=>{const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,t+at);g.gain.exponentialRampToValueAtTime(.0001,t+at+d);o.connect(g).connect(AC.destination);o.start(t+at);o.stop(t+at+d)};
+  if(k==='tick')tone(660,.05);else if(k==='ok'){tone(523,.08);tone(784,.12,'square',.05,.08)}else if(k==='no')tone(140,.18,'sawtooth');
+  else if(k==='alert'){for(let i=0;i<3;i++)tone(880,.12,'square',.05,i*.22)}else if(k==='alarm'){for(let i=0;i<4;i++){tone(440,.15,'sawtooth',.05,i*.3);tone(330,.15,'sawtooth',.05,i*.3+.15)}}
+  else if(k==='win'){[523,659,784,1046].forEach((f,i)=>tone(f,.15,'square',.05,i*.12))}
+  else if(k==='geiger')tone(1400+Math.random()*1000,.012,'square',.03)}catch(e){}}
+window.sfx=sfx;
+
+/* ===================== 3D WORLD ===================== */
+const canvas=$('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:false,logarithmicDepthBuffer:true,powerPreference:'high-performance'});
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.0;
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,0.05,150000);
+camera.rotation.order='YXZ';
+const pmrem=new THREE.PMREMGenerator(renderer);
+scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+scene.environmentIntensity=0.35;
+
+/* ---- quality ---- */
+const QUALITY={high:{dpr:Math.min(devicePixelRatio,1.5),bloom:true,shadows:true},low:{dpr:Math.min(devicePixelRatio,1)*0.75,bloom:false,shadows:false}};
+const TOUCH=matchMedia('(pointer: coarse)').matches||('ontouchstart' in window); if(TOUCH)document.body.classList.add('touch');
+let Q=(TOUCH||(navigator.hardwareConcurrency||4)<=2)?'low':'high', RETRO=false;
+const composer=new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+const bloom=new UnrealBloomPass(new THREE.Vector2(256,256),0.6,0.45,0.85); composer.addPass(bloom);
+const grade=new ShaderPass({uniforms:{tDiffuse:{value:null},vig:{value:0.45},t:{value:0},red:{value:0}},
+ vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+ fragmentShader:`uniform sampler2D tDiffuse;uniform float vig,t,red;varying vec2 vUv;
+ float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233))+t)*43758.5453);}
+ void main(){vec4 c=texture2D(tDiffuse,vUv);vec2 d=vUv-.5;float v=dot(d,d);c.rgb*=1.-v*vig*2.;
+ c.rgb=mix(c.rgb,c.rgb*vec3(1.4,.55,.5),red*smoothstep(.05,.35,v));c.rgb+=(h(vUv*731.)-.5)*.012;gl_FragColor=c;}`});
+composer.addPass(grade);
+composer.addPass(new OutputPass());
+const fxaa=new ShaderPass(FXAAShader); composer.addPass(fxaa);
+function resize(){const w=innerWidth,h=innerHeight;const dpr=RETRO?0.34:QUALITY[Q].dpr;
+  renderer.setPixelRatio(dpr);renderer.setSize(w,h,false);composer.setPixelRatio(dpr);composer.setSize(w,h);
+  fxaa.material.uniforms.resolution.value.set(1/(w*dpr),1/(h*dpr));camera.aspect=w/h;camera.updateProjectionMatrix();if(typeof introCam!=='undefined'){introCam.aspect=w/h;introCam.updateProjectionMatrix();}canvas.classList.toggle('retro',RETRO);document.body.classList.toggle('retro',RETRO);}
+function applyQuality(){const q=QUALITY[Q];bloom.enabled=q.bloom&&!RETRO;fxaa.enabled=!RETRO;renderer.shadowMap.enabled=q.shadows;sun.castShadow=q.shadows;
+  scene.traverse(o=>{if(o.material){(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.needsUpdate=true)}});resize();}
+
+/* ---- helpers ---- */
+const hash=(x,y)=>{const s=Math.sin(x*127.1+y*311.7)*43758.5453;return s-Math.floor(s)};
+function vnoise(x,y){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
+  const a=hash(xi,yi),b=hash(xi+1,yi),c=hash(xi,yi+1),d=hash(xi+1,yi+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;}
+const fbm=(x,y,o=4)=>{let s=0,a=.5,f=1;for(let i=0;i<o;i++){s+=a*vnoise(x*f,y*f);a*=.5;f*=2.03;}return s;};
+function canvasTex(w,h,draw,opts={}){const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');draw(g,w,h);const t=new THREE.CanvasTexture(c);
+  if(opts.color!==false)t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  if(opts.repeat){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(opts.repeat[0],opts.repeat[1]);}t.userData={c,g};return t;}
+const add=(o,p=scene)=>{p.add(o);return o};
+const box=(w,h,d,m,x=0,y=0,z=0,p=scene)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.position.set(x,y,z);p.add(b);return b};
+const hdr=(hex,k)=>new THREE.MeshBasicMaterial({color:new THREE.Color(hex).multiplyScalar(k),toneMapped:true});
+
+/* ---- materials ---- */
+// wall panel: albedo + bump drawn from the same layout
+function drawPanel(g,w,h,bump){
+  const C=(a,b)=>bump?b:a;
+  g.fillStyle=C('#d8d4cc','#8a8a8a');g.fillRect(0,0,w,h);
+  for(let i=0;i<1400;i++){g.fillStyle=bump?`rgba(128,128,128,${Math.random()*.15})`:`rgba(${120+Math.random()*60|0},${110+Math.random()*50|0},100,${Math.random()*.05})`;g.fillRect(Math.random()*w,Math.random()*h,2,2);}
+  const seam=(x,y,ww,hh)=>{g.fillStyle=C('#9d978e','#303030');g.fillRect(x,y,ww,hh);};
+  seam(0,0,w,4);seam(0,0,4,h);seam(0,h*.42,w,4);seam(0,h*.86,w,4);
+  g.fillStyle=C('#e8e5df','#a8a8a8');g.fillRect(14,14,w-28,h*.42-28);
+  g.fillStyle=C('#cfcac1','#909090');g.fillRect(14,h*.42+14,w-28,h*.44-28);
+  // vent grille
+  for(let i=0;i<9;i++){g.fillStyle=C('#5d5a55','#202020');g.fillRect(w*.25,h*.62+i*9,w*.5,4);}
+  // rivets
+  g.fillStyle=C('#8a857d','#d0d0d0');[[22,22],[w-26,22],[22,h*.42-26],[w-26,h*.42-26]].forEach(([x,y])=>{g.beginPath();g.arc(x,y,3,0,7);g.fill();});
+  // accent stripe + kick plate
+  if(!bump){g.fillStyle='#2f6f8f';g.fillRect(14,h*.42-34,w-28,6);g.fillStyle='#3a3836';g.fillRect(0,h*.86+4,w,h);
+    g.fillStyle='#55504a';g.font='bold 18px monospace';g.fillText('HAB-A',22,h*.42+40);}
+  else {g.fillStyle='#404040';g.fillRect(0,h*.86+4,w,h);}
+}
+const wallTex=canvasTex(512,512,(g,w,h)=>drawPanel(g,w,h,false),{repeat:[-10,1]});
+const wallBump=canvasTex(512,512,(g,w,h)=>drawPanel(g,w,h,true),{repeat:[-10,1],color:false});
+const wallM=new THREE.MeshStandardMaterial({map:wallTex,bumpMap:wallBump,bumpScale:2,roughness:.72,metalness:.05,side:THREE.BackSide});
+function drawGrate(g,w,h,bump){g.fillStyle=bump?'#606060':'#3b3d40';g.fillRect(0,0,w,h);
+  for(let y=0;y<h;y+=32)for(let x=0;x<w;x+=32){const o=(y/32)%2?16:0;g.fillStyle=bump?'#b0b0b0':'#55585c';g.save();g.translate(x+o+16,y+16);g.rotate((y/32)%2?.6:-.6);g.fillRect(-10,-3,20,6);g.restore();}
+  g.strokeStyle=bump?'#202020':'#26282a';g.lineWidth=4;g.strokeRect(0,0,w,h);}
+const floorM=new THREE.MeshStandardMaterial({map:canvasTex(256,256,(g,w,h)=>drawGrate(g,w,h,false),{repeat:[8,8]}),bumpMap:canvasTex(256,256,(g,w,h)=>drawGrate(g,w,h,true),{repeat:[8,8],color:false}),bumpScale:2,roughness:.45,metalness:.75});
+const metalM=new THREE.MeshStandardMaterial({color:'#8d939a',roughness:.35,metalness:.85});
+const darkM=new THREE.MeshStandardMaterial({color:'#2c3036',roughness:.5,metalness:.6});
+const ribM=new THREE.MeshStandardMaterial({color:'#a9adb3',roughness:.4,metalness:.7});
+const hazardTex=canvasTex(128,32,(g,w,h)=>{g.fillStyle='#f2b705';g.fillRect(0,0,w,h);g.fillStyle='#151515';for(let x=-h;x<w;x+=32){g.beginPath();g.moveTo(x,h);g.lineTo(x+16,h);g.lineTo(x+16+h,0);g.lineTo(x+h,0);g.fill();}},{repeat:[4,1]});
+
+/* ---- sky (Mars: butterscotch by day, blue glow around the Sun) ---- */
+const skyU={sunDir:{value:new THREE.Vector3(.3,.5,.8)},dust:{value:0}};
+const sky=new THREE.Mesh(new THREE.SphereGeometry(5000,48,24),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,depthTest:false,uniforms:skyU,
+ vertexShader:`varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+ fragmentShader:`uniform vec3 sunDir;uniform float dust;varying vec3 vP;void main(){vec3 d=normalize(vP);float h=d.y;
+  vec3 zen=vec3(.30,.13,.06),hor=vec3(.86,.50,.25),murk=vec3(.46,.30,.18);vec3 c=mix(hor,zen,smoothstep(-.02,.65,h));
+  float s=max(dot(d,normalize(sunDir)),0.);
+  c=mix(c,vec3(.35,.52,.78),pow(s,14.)*.6);c+=vec3(1.,.85,.65)*pow(s,5.)*.12;
+  if(h<0.)c=hor*.9;
+  c=mix(c,murk,dust*.85);c+=vec3(1.,.97,.9)*pow(s,3000.)*60.*(1.-dust*.97)+vec3(1.,.8,.6)*pow(s,40.)*.35*dust;
+  gl_FragColor=vec4(c,1.);}`}));
+sky.renderOrder=-1; sky.frustumCulled=false; scene.add(sky);
+scene.fog=new THREE.FogExp2('#c99268',0.000024);
+const hemi=add(new THREE.HemisphereLight('#ffd8b5','#4a2616',0.6));
+const sun=add(new THREE.DirectionalLight('#fff1dd',2.6));
+sun.shadow.mapSize.set(2048,2048);const sc=sun.shadow.camera;sc.left=-50;sc.right=50;sc.top=50;sc.bottom=-50;sc.near=1;sc.far=400;sun.shadow.bias=-0.0004;sun.shadow.normalBias=0.03;
+sun.target.position.set(0,0,30); scene.add(sun.target);
+
+/* ---- terrain: real Gale crater + Mount Sharp (MOLA) + near-field detail ---- */
+const ROVER_POS=new THREE.Vector3(7,0,24), HELI_POS=new THREE.Vector3(-10,0,36);
+function buildTerrain(){
+  const raw=Uint8Array.from(atob(TERRAIN.b64),c=>c.charCodeAt(0)); const N=TERRAIN.N;
+  const el=i=>TERRAIN.min+raw[i]/255*(TERRAIN.max-TERRAIN.min);
+  const geo=new THREE.PlaneGeometry(TERRAIN.span,TERRAIN.span,N-1,N-1); geo.rotateX(-Math.PI/2);
+  const pos=geo.attributes.position, cols=[];
+  const lo=new THREE.Color('#5a3322'), mid=new THREE.Color('#9a5a33'), hi=new THREE.Color('#d39a68');
+  for(let i=0;i<pos.count;i++){const e=el(i);pos.setY(i,e-TERRAIN.center-6);
+    const t=(e-TERRAIN.min)/(TERRAIN.max-TERRAIN.min); const c=t<.35?lo.clone().lerp(mid,t/.35):mid.clone().lerp(hi,(t-.35)/.65);
+    c.offsetHSL(0,0,(fbm(pos.getX(i)*.0004,pos.getZ(i)*.0004)-.5)*.08); cols.push(c.r,c.g,c.b);}
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3)); geo.computeVertexNormals();
+  const tm=add(new THREE.Mesh(geo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:1,metalness:0}))); tm.rotation.y=TERRAIN.rotY;
+  // near ground: rolling regolith with ripples
+  const S2=1600, seg=180; const gg=new THREE.PlaneGeometry(S2,S2,seg,seg); gg.rotateX(-Math.PI/2);
+  const gp=gg.attributes.position, gc=[]; const base=new THREE.Color('#a35d34'), dark=new THREE.Color('#6a3a22'), light=new THREE.Color('#cf9563');
+  const gh=(x,z)=>{const r=Math.hypot(x,z);const f=Math.min(1,Math.max(0,(r-8)/30));return f*((fbm(x*.012,z*.012,5)-.5)*7+(fbm(x*.08,z*.08,3)-.5)*.8+Math.sin((x*.9+z*.4)*.35)*.06)-Math.max(0,(r-640)/160)*8;};
+  for(let i=0;i<gp.count;i++){const x=gp.getX(i),z=gp.getZ(i);const y=gh(x,z);gp.setY(i,y);
+    const n=fbm(x*.03+7,z*.03+3,3);const c=base.clone().lerp(n>.5?light:dark,Math.min(1,Math.abs(n-.5)*1.6));c.lerp(dark,Math.max(0,-y)*.08);gc.push(c.r,c.g,c.b);}
+  gg.setAttribute('color',new THREE.Float32BufferAttribute(gc,3)); gg.computeVertexNormals();
+  const detail=canvasTex(512,512,(g,w,h)=>{g.fillStyle='#8a8a8a';g.fillRect(0,0,w,h);for(let i=0;i<9000;i++){const v=110+Math.random()*80|0;g.fillStyle=`rgb(${v},${v},${v})`;const s=Math.random()<.92?1+Math.random()*2:3+Math.random()*5;g.beginPath();g.arc(Math.random()*w,Math.random()*h,s/2,0,7);g.fill();}},{repeat:[260,260],color:false});
+  const ground=add(new THREE.Mesh(gg,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.95,metalness:0,bumpMap:detail,bumpScale:1.2})));
+  ground.receiveShadow=true; window.__gh=gh;
+  // rocks: 4 shapes, instanced
+  const rockMat=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.9,flatShading:true});
+  for(let v=0;v<4;v++){const g=new THREE.IcosahedronGeometry(1,1);const p=g.attributes.position;
+    for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i);const k=.72+fbm(x*1.7+v*9,z*1.7+y+v*3,3)*.65;p.setXYZ(i,x*k,y*k*(.55+v*.1),z*k);} g.computeVertexNormals();
+    const n=170, im=new THREE.InstancedMesh(g,rockMat,n); const M=new THREE.Matrix4(),q=new THREE.Quaternion(),pv=new THREE.Vector3(),s=new THREE.Vector3(),col=new THREE.Color();
+    for(let i=0;i<n;i++){let x,z,tries=0;do{const r=9+Math.pow(Math.random(),1.3)*420,a=Math.random()*Math.PI*2;x=Math.cos(a)*r;z=Math.sin(a)*r;tries++;}while(tries<20&&(Math.hypot(x-ROVER_POS.x,z-ROVER_POS.z)<5||Math.hypot(x-HELI_POS.x,z-HELI_POS.z)<3||(x>-26&&x<6&&z>12&&z<34)));
+      const sz=Math.random()<.05?.8+Math.random()*1.2:.12+Math.random()*Math.random()*.7; pv.set(x,gh(x,z)+sz*.15,z); q.setFromEuler(new THREE.Euler(Math.random()*.5,Math.random()*6,Math.random()*.5)); s.set(sz,sz,sz*(.8+Math.random()*.5)); M.compose(pv,q,s); im.setMatrixAt(i,M);
+      col.set('#8f5c3d').offsetHSL((Math.random()-.5)*.02,(Math.random()-.5)*.1,(Math.random()-.5)*.12); im.setColorAt(i,col);}
+    im.castShadow=true; im.receiveShadow=true; add(im);}
+  // solar panel field (your power source)
+  const pTex=canvasTex(256,128,(g,w,h)=>{g.fillStyle='#14203a';g.fillRect(0,0,w,h);g.strokeStyle='#5b7fb8';g.lineWidth=2;for(let x=0;x<=w;x+=32){g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke();}for(let y=0;y<=h;y+=32){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}g.fillStyle='#ffffff10';g.fillRect(0,0,w,h/2);});
+  const pM=new THREE.MeshStandardMaterial({map:pTex,roughness:.18,metalness:.5,envMapIntensity:1.2}); window.__panelM=pM;
+  const solar=new THREE.Group(); solar.position.set(-15,0,22); add(solar);
+  for(let row=0;row<3;row++)for(let c=0;c<4;c++){const g=new THREE.Group();g.position.set(c*3.6-5.4,0,row*3.6-3.6);solar.add(g);
+    const leg=box(.12,1.1,.12,metalM,0,.55,0,g);leg.castShadow=true;
+    const pnl=box(3.2,.06,1.7,pM,0,1.15,0,g);pnl.rotation.x=-.45;pnl.castShadow=true;pnl.receiveShadow=true;
+    const fr=box(3.3,.04,.06,metalM,0,1.15,.85,g);fr.rotation.x=-.45;}
+  solar.traverse(o=>{if(o.isMesh)o.position.y+=gh(solar.position.x,solar.position.z);});
+  // cable from panels to base
+  const cab=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([[-12,18],[-8,12],[-3,8],[-1,6.2]].map(([x,z])=>new THREE.Vector3(x,gh(x,z)+.05,z))),40,.05,6),new THREE.MeshStandardMaterial({color:'#d9822b',roughness:.6}));add(cab);
+  // outside dust
+  const dg=new THREE.BufferGeometry(),dp=[];for(let i=0;i<500;i++)dp.push((Math.random()-.5)*90,Math.random()*14,8+Math.random()*80);dg.setAttribute('position',new THREE.Float32BufferAttribute(dp,3));
+  const dust=add(new THREE.Points(dg,new THREE.PointsMaterial({map:softDot(),color:'#e8b38a',size:.35,transparent:true,opacity:.35,depthWrite:false})));
+  return {dust};
+}
+function softDot(){return canvasTex(64,64,(g,w,h)=>{const r=g.createRadialGradient(32,32,0,32,32,32);r.addColorStop(0,'#fff');r.addColorStop(1,'#fff0');g.fillStyle=r;g.fillRect(0,0,w,h);});}
+const OUT=buildTerrain();
+
+/* ---- real NASA models outside (NASA 3D Resources) ---- */
+const gltf=new GLTFLoader(); gltf.setMeshoptDecoder(MeshoptDecoder);
+async function loadModel(url,pos,rotY,cb,yOff=0){let buf;try{const mod=await import(url);const bin=atob(mod.default);buf=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);}catch(e){return;}
+  gltf.parse(buf.buffer,'',g=>{const m=g.scene;m.position.copy(pos);m.position.y=window.__gh(pos.x,pos.z)-.02+yOff;m.rotation.y=rotY;
+  m.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material){o.material.envMapIntensity=.6;}}});scene.add(m);cb&&cb(m);},()=>{});}
+loadModel('./assets/curiosity.js',ROVER_POS,-2.3,null,.5);
+
+/* ---- habitat interior ---- */
+const R=6, HH=3.2, SEG=12, GAPA=Math.PI/3; // 12-sided module, 2 facets open for the bay window
+const wall=add(new THREE.Mesh(new THREE.CylinderGeometry(R,R,HH,SEG-2,1,true,GAPA/2,Math.PI*2-GAPA),wallM)); wall.position.y=HH/2; wall.receiveShadow=true; wall.castShadow=true; wallM.shadowSide=THREE.DoubleSide;
+const floor=add(new THREE.Mesh(new THREE.CircleGeometry(R,SEG),floorM)); floor.rotation.x=-Math.PI/2; floor.position.y=.01; floor.receiveShadow=true;
+const ceilM=new THREE.MeshStandardMaterial({color:'#c9c5bd',roughness:.8,side:THREE.BackSide});
+const ceil=add(new THREE.Mesh(new THREE.ConeGeometry(R,1.7,SEG,1,true),ceilM)); ceil.position.y=HH+.85; ceil.castShadow=true; ceilM.shadowSide=THREE.DoubleSide;
+// structural ribs at every facet corner + ceiling arches
+for(let k=0;k<SEG;k++){const a=k*Math.PI*2/SEG; const x=Math.sin(a),z=Math.cos(a);
+  const rib=box(.22,HH,.18,ribM,x*(R-.09),HH/2,z*(R-.09)); rib.rotation.y=a;
+  const p0=new THREE.Vector3(x*(R-.1),HH,z*(R-.1)), p1=new THREE.Vector3(x*.5,HH+1.45,z*.5); const mid=p0.clone().add(p1).multiplyScalar(.5), len=p0.distanceTo(p1);
+  const cr=box(.16,.14,len,ribM,mid.x,mid.y,mid.z); cr.lookAt(p1);}
+// ring light + floor LED strip (glow)
+const ring=add(new THREE.Mesh(new THREE.TorusGeometry(2.7,.05,8,64),hdr('#fff3e0',3))); ring.rotation.x=Math.PI/2; ring.position.y=HH+.5;
+const ring2=add(new THREE.Mesh(new THREE.TorusGeometry(1.1,.04,8,48),hdr('#fff3e0',2.5))); ring2.rotation.x=Math.PI/2; ring2.position.y=HH+1.1;
+const ledM=hdr('#38d6ff',1.6);
+const led=add(new THREE.Mesh(new THREE.TorusGeometry(R-.42,.018,6,96,Math.PI*2-GAPA-.3),ledM)); led.rotation.x=Math.PI/2; led.rotation.z=-(Math.PI/2+GAPA/2+.15); led.position.y=.04;
+// kick plate band
+const kick=add(new THREE.Mesh(new THREE.CylinderGeometry(R-.04,R-.04,.32,SEG-2,1,true,GAPA/2,Math.PI*2-GAPA),darkM)); kick.material=darkM.clone(); kick.material.side=THREE.BackSide; kick.position.y=.16;
+// pipes along the wall
+function pipe(h,r,rad,mat){const pts=[];for(let i=0;i<=60;i++){const a=GAPA/2+.12+(Math.PI*2-GAPA-.24)*i/60;pts.push(new THREE.Vector3(Math.sin(a)*r,h,Math.cos(a)*r));}
+  const m=add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),120,rad,8),mat));return m;}
+pipe(2.78,R-.3,.055,metalM); pipe(2.95,R-.32,.07,new THREE.MeshStandardMaterial({color:'#d27a2c',roughness:.55,metalness:.1}));
+// bay window: two panes following the facets
+const lampsM=[];
+const winFrameM=new THREE.MeshStandardMaterial({color:'#5c6168',roughness:.4,metalness:.8});
+const glassM=new THREE.MeshPhysicalMaterial({color:'#ffd9b8',transparent:true,opacity:.1,roughness:.05,metalness:0,envMapIntensity:.9,depthWrite:false});
+[[-1],[1]].forEach(([s])=>{const a0=0,a1=s*Math.PI/6;const p0=new THREE.Vector3(Math.sin(a0)*R,0,Math.cos(a0)*R),p1=new THREE.Vector3(Math.sin(a1)*R,0,Math.cos(a1)*R);
+  const mid=p0.clone().add(p1).multiplyScalar(.5),len=p0.distanceTo(p1),ang=Math.atan2(p1.x-p0.x,p1.z-p0.z)-Math.PI/2;
+  const g=new THREE.Group();g.position.copy(mid);g.rotation.y=ang;scene.add(g);
+  box(len,.55,.35,winFrameM,0,.275,0,g); box(len,.45,.35,winFrameM,0,HH-.225,0,g); box(.1,HH-1,.12,winFrameM,0,HH/2,0,g);
+  const gl=new THREE.Mesh(new THREE.PlaneGeometry(len,HH-1),glassM);gl.position.y=HH/2;gl.rotation.y=Math.PI;g.add(gl);
+  const sill=box(len,.05,.5,hazardMat(),0,.56,-.1,g);});
+function hazardMat(){return new THREE.MeshStandardMaterial({map:hazardTex,roughness:.6});}
+// ceiling lamps (lights)
+const lamps=[]; for(let i=0;i<3;i++){const a=i/3*Math.PI*2+Math.PI; const L=add(new THREE.PointLight('#ffe3c2',14,10,2)); L.position.set(Math.sin(a)*2.7,HH+.35,Math.cos(a)*2.7); lamps.push(L);}
+const fill=add(new THREE.PointLight('#ffd9b0',5,9,2)); fill.position.set(0,1.4,2.5);
+const redL=add(new THREE.PointLight('#ff2200',0,14,1.5)); redL.position.set(0,HH,0);
+/* ---- interactive stations ---- */
+const stations=[]; const clickables=[]; const colliders=[]; const leds=[];
+function station(name,label,angleDeg,color,open,build){
+  const a=THREE.MathUtils.degToRad(angleDeg), r=R-.95; const grp=new THREE.Group(); grp.position.set(Math.sin(a)*r,0,Math.cos(a)*r); grp.lookAt(0,0,0); scene.add(grp);
+  const tex=canvasTex(512,320,()=>{});
+  build(grp,tex,color);
+  const lab=labelSprite(label,color); lab.position.set(0,2.62,-.1); grp.add(lab);
+  const st={name,grp,tex,open,color,pos:grp.position.clone()}; stations.push(st); colliders.push({p:st.pos,r:1.15});
+  grp.traverse(o=>{if(o.isMesh){o.userData.station=st;clickables.push(o);}});
+  return st;
+}
+const labelDraws=[];
+function labelSprite(text,color){const draw=(g,w,h)=>{g.clearRect(0,0,w,h);g.fillStyle='#0b0f14dd';g.beginPath();g.roundRect(4,4,w-8,h-8,18);g.fill();g.strokeStyle=color;g.lineWidth=6;g.stroke();g.fillStyle=color;g.font='700 60px "Barlow Condensed",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(text,w/2,h/2+3);};const t=canvasTex(512,112,draw);labelDraws.push(()=>{draw(t.userData.g,512,112);t.needsUpdate=true;});
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,toneMapped:false})); s.scale.set(1.25,.27,1); return s;}
+function consoleBody(grp,tex,color){
+  const cab=box(1.6,.92,.72,darkM,0,.46,0,grp); cab.castShadow=true;
+  const desk=box(1.7,.06,.62,new THREE.MeshStandardMaterial({color:'#4a5058',roughness:.35,metalness:.6}),0,.97,.05,grp); desk.rotation.x=.18;
+  const keyM=new THREE.MeshStandardMaterial({color:'#20242a',emissive:new THREE.Color(color),emissiveIntensity:.35,roughness:.4});
+  const keys=new THREE.InstancedMesh(new THREE.BoxGeometry(.075,.025,.07),keyM,36);const M=new THREE.Matrix4();
+  for(let i=0;i<36;i++){const cx=i%12,cy=i/12|0;M.makeRotationX(.18);M.setPosition(-.5+cx*.09,1.0+cy*.012,.18-cy*.085+.06);keys.setMatrixAt(i,M);} grp.add(keys);
+  const bez=box(1.56,1.0,.08,new THREE.MeshStandardMaterial({color:'#1b1f24',roughness:.3,metalness:.5}),0,1.68,-.24,grp); bez.rotation.x=-.16;
+  const scr=new THREE.Mesh(new THREE.PlaneGeometry(1.44,.9),new THREE.MeshBasicMaterial({map:tex,color:new THREE.Color(1.15,1.15,1.15)})); scr.position.set(0,1.68,-.195); scr.rotation.x=-.16; grp.add(scr);
+  const stripM=hdr(color,2.2); box(.03,.8,.03,stripM,-.81,.46,.36,grp); box(.03,.8,.03,stripM,.81,.46,.36,grp);
+  for(let i=0;i<4;i++){const l=box(.04,.04,.02,hdr(i%2?'#4dff88':color,2.5),.45+i*.08,.8,.37,grp); leds.push(l);}
+  const arm=box(.08,.5,.08,metalM,0,1.25,-.3,grp);
+}
+const stPower=station('power','POWER',-50,'#ffb347',()=>openPower(),consoleBody);
+const stComms=station('comms','COMMS',-95,'#5ad1ff',()=>openComms(),consoleBody);
+const stRad=station('rad','RADIATION',50,'#ff5a4f',()=>openRad(),consoleBody);
+const belt=[]; const stGym=station('gym','TREADMILL',-140,'#7dff9a',()=>openGym(),(g)=>{
+  const deck=box(.8,.18,1.9,darkM,0,.12,0,g); deck.castShadow=true;
+  const beltTex=canvasTex(64,256,(c,w,h)=>{c.fillStyle='#16191d';c.fillRect(0,0,w,h);c.fillStyle='#2b3038';for(let y=0;y<h;y+=16)c.fillRect(0,y,w,6);},{repeat:[1,3]});
+  const bt=box(.62,.02,1.75,new THREE.MeshStandardMaterial({map:beltTex,roughness:.9}),0,.22,0,g); belt.push(beltTex);
+  box(.05,.9,.05,ribM,-.36,.65,-.85,g); box(.05,.9,.05,ribM,.36,.65,-.85,g);
+  box(.05,.05,1.0,ribM,-.36,1.05,-.4,g); box(.05,.05,1.0,ribM,.36,1.05,-.4,g);
+  box(.8,.06,.06,ribM,0,1.1,-.85,g);
+  const scr=box(.55,.3,.06,new THREE.MeshStandardMaterial({color:'#1b1f24'}),0,1.32,-.86,g); scr.rotation.x=.3;
+  box(.45,.2,.02,hdr('#7dff9a',1.8),0,1.33,-.82,g).rotation.x=.3;
+  const harness=new THREE.Mesh(new THREE.TorusGeometry(.3,.025,6,20),new THREE.MeshStandardMaterial({color:'#d27a2c'})); harness.rotation.x=Math.PI/2; harness.position.set(0,1.05,.1); g.add(harness);
+  for(const sx of [-.3,.3]){const bng=box(.02,.85,.02,new THREE.MeshStandardMaterial({color:'#d27a2c'}),sx,.62,.1,g);}});
+const stAir=station('airlock','AIRLOCK',180,'#f2b705',()=>openAirlock(),(g)=>{
+  const fr=box(1.9,2.7,.25,hazardMat(),0,1.35,-.75,g); fr.material.map=hazardTex.clone(); fr.material.map.repeat.set(3,6); fr.material.map.needsUpdate=true;
+  box(1.4,2.3,.3,metalM,0,1.2,-.71,g);
+  const port=new THREE.Mesh(new THREE.TorusGeometry(.26,.05,8,24),darkM);port.position.set(0,1.65,-.55);g.add(port);
+  const pg=new THREE.Mesh(new THREE.CircleGeometry(.24,24),new THREE.MeshStandardMaterial({color:'#e7a06a',emissive:'#a8552a',emissiveIntensity:.6,roughness:.1}));pg.position.set(0,1.65,-.55);g.add(pg);
+  box(.18,.26,.05,hdr('#4dff88',2),.55,1.25,-.55,g); const suit=new THREE.Mesh(new THREE.CapsuleGeometry(.22,.7,4,10),new THREE.MeshStandardMaterial({color:'#f0ece4',roughness:.7}));suit.position.set(1.15,1.0,-.45);g.add(suit);
+  const helm=new THREE.Mesh(new THREE.SphereGeometry(.17,16,12),new THREE.MeshStandardMaterial({color:'#d9a441',metalness:.6,roughness:.15}));helm.position.set(1.15,1.62,-.45);g.add(helm);});
+const stBunk=station('bunk','BUNK',140,'#c39bff',()=>openBunk(),(grp)=>{
+  const fr=box(2.3,.4,1.1,darkM,0,.2,0,grp); fr.castShadow=true;
+  box(2.15,.2,1.0,new THREE.MeshStandardMaterial({color:'#2f4f78',roughness:.9}),0,.5,0,grp);
+  box(1.2,.08,1.02,new THREE.MeshStandardMaterial({color:'#3f6aa0',roughness:.95}),.4,.63,0,grp);
+  box(.45,.14,.7,new THREE.MeshStandardMaterial({color:'#ece6dc',roughness:.95}),-.8,.67,0,grp);
+  box(2.3,.06,1.1,darkM,0,2.1,0,grp); box(.06,2.1,1.1,darkM,-1.15,1.05,0,grp); box(.06,2.1,1.1,darkM,1.15,1.05,0,grp);
+  for(let i=0;i<4;i++){const cur=new THREE.Mesh(new THREE.BoxGeometry(.2,1.5,.03),new THREE.MeshStandardMaterial({color:i%2?'#3d4566':'#454e72',roughness:1}));cur.position.set(.55+i*.17,1.32,.55);cur.rotation.y=(i%2?.35:-.35);grp.add(cur);}
+  box(.25,.06,.12,hdr('#ffd9a0',2.5),-.8,1.95,-.3,grp);});
+// greenhouse (state-driven plants)
+const plantIM=[]; (function(){const a=THREE.MathUtils.degToRad(95), r=R-.85; const grp=new THREE.Group(); grp.position.set(Math.sin(a)*r,0,Math.cos(a)*r); grp.lookAt(0,0,0); scene.add(grp); colliders.push({p:grp.position.clone(),r:1.2});
+  const leafG=new THREE.SphereGeometry(.1,7,5); leafG.scale(1,.45,1.6);
+  for(let lvl=0;lvl<2;lvl++){const y=.62+lvl*.95;
+    box(2.3,.05,.65,metalM,0,y,0,grp); box(2.2,.12,.55,new THREE.MeshStandardMaterial({color:'#2c2420',roughness:.9}),0,y+.08,0,grp);
+    box(2.1,.03,.12,hdr('#ff5fd2',2.8),0,y+.82,-.05,grp);
+    const im=new THREE.InstancedMesh(leafG,new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.6}),8*6); im.userData.base=[];
+    const M=new THREE.Matrix4(),q=new THREE.Quaternion(),c=new THREE.Color();
+    for(let p=0;p<8;p++)for(let l=0;l<6;l++){const i=p*6+l;const ang=l/6*Math.PI*2+p;const pos=new THREE.Vector3(-.95+p*.27+Math.cos(ang)*.06,y+.22+l*.012,Math.sin(ang)*.06);
+      q.setFromEuler(new THREE.Euler(-.5,ang,0));im.userData.base.push({pos,q:q.clone()});M.compose(pos,q,new THREE.Vector3(1,1,1));im.setMatrixAt(i,M);c.set(['#3fae3a','#56c449','#2f8f30'][l%3]);im.setColorAt(i,c);}
+    grp.add(im); plantIM.push(im);}
+  box(.06,2.0,.65,metalM,-1.15,1,0,grp); box(.06,2.0,.65,metalM,1.15,1,0,grp);
+  const pl=new THREE.PointLight('#ff6be0',3,3.5,2); pl.position.set(0,1.5,.5); grp.add(pl);
+  const lab=labelSprite('GREENHOUSE','#7dff9a'); lab.position.set(0,2.55,0); grp.add(lab);})();
+// oxygen tanks (state-driven bands)
+const tanks=[]; let fan=null;
+const stGen=station('air','AIR & HEAT',-163,'#7dff9a',()=>openPower(),(g)=>{
+  const cab=box(1.4,1.7,.8,new THREE.MeshStandardMaterial({color:'#5b636d',roughness:.45,metalness:.6}),0,.85,-.1,g); cab.castShadow=true;
+  box(1.44,.06,.84,darkM,0,1.72,-.1,g); box(1.44,.12,.84,hazardMat(),0,.06,-.1,g);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.42,.05,8,32),darkM); ring.position.set(0,1.05,.31); g.add(ring);
+  const back=new THREE.Mesh(new THREE.CircleGeometry(.4,32),new THREE.MeshStandardMaterial({color:'#15181c',roughness:.8})); back.position.set(0,1.05,.305); g.add(back);
+  fan=new THREE.Group(); fan.position.set(0,1.05,.33); g.add(fan);
+  for(let i=0;i<4;i++){const bl=box(.12,.36,.02,metalM,0,0,0,fan); bl.geometry.translate(0,.18,0); bl.rotation.z=i*Math.PI/2; bl.rotation.y=.4;}
+  box(.1,.1,.06,darkM,0,0,0,fan);
+  for(let i=0;i<5;i++) box(1.0,.03,.03,hdr('#ff7a2a',2.2),0,.3+i*.07,.31,g);   // heating coils
+  for(let i=0;i<3;i++){const l=new THREE.Mesh(new THREE.SphereGeometry(.05,10,8),hdr('#7dff9a',2)); l.position.set(-.35+i*.35,1.58,.31); g.add(l); tanks.push(l);}
+  const pipe=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,1.6,12),metalM); pipe.position.set(.45,2.5,-.25); g.add(pipe);});
+// floor hatch
+const hatch=add(new THREE.Mesh(new THREE.TorusGeometry(.7,.05,8,40),hazardMat())); hatch.rotation.x=-Math.PI/2; hatch.position.y=.03;
+// floating dust motes
+const motes=add(new THREE.Points(new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute(Array.from({length:300},()=>[(Math.random()-.5)*9,Math.random()*3,(Math.random()-.5)*9]).flat(),3)),new THREE.PointsMaterial({map:softDot(),color:'#ffe7cf',size:.03,transparent:true,opacity:.6,depthWrite:false})));
+
+/* ---- in-world screens ---- */
+function drawScreens(){
+  if(!S) return;
+  const T=(tex,fn)=>{const {g}=tex.userData;g.setTransform(2,0,0,2,0,0);const gr=g.createLinearGradient(0,0,0,160);gr.addColorStop(0,'#0c1820');gr.addColorStop(1,'#060b10');g.fillStyle=gr;g.fillRect(0,0,256,160);fn(g);g.fillStyle='#ffffff06';for(let y=0;y<160;y+=2)g.fillRect(0,y,256,1);tex.needsUpdate=true;};
+  T(stPower.tex,g=>{g.fillStyle='#ffb347';g.font='bold 20px "Barlow Condensed",sans-serif';g.fillText('POWER · SOL '+Math.min(S.sol,SOLS),10,22);
+    const rows=[['AIR+HEAT',S.alloc.air,'#7dff9a'],['FARM',S.alloc.farm,'#ffd34d'],['ACTIVITY',S.acts.reduce((t,k)=>t+ACT_COST[k],0),'#c39bff']];
+    rows.forEach(([n,v,c],i)=>{g.fillStyle='#ffffffaa';g.font='600 14px "Barlow Condensed",sans-serif';g.fillText(n,10,52+i*26);for(let k=0;k<6;k++){g.fillStyle=k<v?c:'#ffffff14';g.fillRect(84+k*26,41+i*26,20,13);}});
+    g.fillStyle=used()>available()?'#ff5a4f':'#ffb347';g.font='bold 17px "Barlow Condensed",sans-serif';g.fillText(`USED ${used()}/${available()}`,10,150);});
+  T(stComms.tex,g=>{g.fillStyle='#5ad1ff';g.font='bold 20px "Barlow Condensed",sans-serif';g.fillText('COMMS · EARTH LINK',10,22);
+    const m=S.msgs[0]; if(m){g.fillStyle=m.alert?'#ff7a6f':'#d9f4ff';g.font='bold 15px "Barlow Condensed",sans-serif';wrap(g,m.title.replace(/<[^>]+>/g,''),10,50,236,19,3);}
+    if(!S.read&&(performance.now()/500|0)%2){g.fillStyle='#ff5a4f';g.fillRect(10,120,236,28);g.fillStyle='#000';g.font='bold 18px "Barlow Condensed",sans-serif';g.fillText('NEW MESSAGE',84,140);}});
+  T(stRad.tex,g=>{g.fillStyle='#ff5a4f';g.font='bold 20px "Barlow Condensed",sans-serif';g.fillText('RADIATION OUTSIDE',10,22);
+    const v=radIndex(outsideToday()); g.font='bold 60px "Barlow Condensed",sans-serif'; g.fillStyle=v>=6?'#ff5a4f':v>=3?'#ffb347':'#7dff9a'; g.fillText(v+'/10',10,88);
+    for(let k=0;k<=10;k++){g.fillStyle=k<=v?(k>=6?'#ff5a4f':k>=3?'#ffb347':'#7dff9a'):'#ffffff14';g.fillRect(10+k*21,104,17,14);}
+    g.fillStyle='#7dff9a';g.font='bold 15px "Barlow Condensed",sans-serif';g.fillText('INSIDE: VERY LOW',10,145);});
+  // greenhouse & tanks reflect reserves
+  const frac=S.food/10, M=new THREE.Matrix4(), sc=new THREE.Vector3();
+  plantIM.forEach((im,lv)=>{im.userData.base.forEach((b,i)=>{const p=(lv*8+(i/6|0))/16;const k=p<frac?1:.4;sc.set(k,k,k);M.compose(b.pos,b.q,sc);im.setMatrixAt(i,M);});im.instanceMatrix.needsUpdate=true;});
+  if(window.__panelM){const d=S.panelDust||0; window.__panelM.color.setRGB(1-d*.2,1-d*.6,1-d*.9); window.__panelM.roughness=.18+d*1.2;}
+  tanks.forEach((b,i)=>b.material.color.set(i<Math.round(S.f.air/3.4)?'#7dff9a':'#ff5a4f').multiplyScalar(2));
+}
+function wrap(g,text,x,y,w,lh,maxL){const words=text.split(' ');let line='',n=0;for(const wd of words){const t=line+wd+' ';if(g.measureText(t).width>w&&line){g.fillText(line,x,y);y+=lh;line=wd+' ';if(++n>=maxL){return}}else line=t;}g.fillText(line,x,y);}
+
+/* ---- time of day ---- */
+// The look follows the real sunlight level of the sol: clear, hazy, or a dust storm that hides the horizon.
+const LOOK={V:{fog:.00002,sun:2.8,d:0},H:{fog:.000024,sun:2.6,d:0},M:{fog:.00003,sun:2.4,d:.12},L:{fog:.0042,sun:1.0,d:1}};
+function setDayTime(){
+  const sol=S?S.sol:1, az=0.35+sol*0.22, el=0.42+0.1*Math.sin(sol);
+  const d=new THREE.Vector3(Math.sin(az)*Math.cos(el),Math.sin(el),Math.cos(az)*Math.cos(el));
+  skyU.sunDir.value.copy(d); sun.position.copy(sun.target.position).addScaledVector(d,180);
+  const k=LOOK[S&&S.wx?today()[4]:'H']||LOOK.H;
+  scene.fog.density=k.fog; scene.fog.color.set(k.d>.5?'#8f6444':'#c99268'); sun.intensity=k.sun; hemi.intensity=.6-.15*k.d; skyU.dust.value=k.d;
+  OUT.dust.material.opacity=.35+.45*k.d; OUT.dust.material.size=.35+.5*k.d;
+}
+
+/* ===================== OUTSIDE (walk on Mars) ===================== */
+const extTex=canvasTex(256,256,(g,w,h)=>{g.fillStyle='#e9e4dc';g.fillRect(0,0,w,h);g.fillStyle='#bdb6ab';g.fillRect(0,0,w,3);g.fillRect(0,0,3,h);g.fillRect(0,h*.5,w,3);g.fillStyle='#c1440e';g.fillRect(0,h*.82,w,10);},{repeat:[-12,1]});
+const extM=new THREE.MeshStandardMaterial({map:extTex,roughness:.6,metalness:.15});
+const shell=add(new THREE.Mesh(new THREE.CylinderGeometry(R+.2,R+.2,HH+.25,SEG-2,1,true,GAPA/2,Math.PI*2-GAPA),extM)); shell.position.y=(HH+.25)/2; shell.castShadow=true;
+const dome=add(new THREE.Mesh(new THREE.SphereGeometry(R+.2,SEG,6,0,Math.PI*2,0,Math.PI/2),extM)); dome.scale.y=.32; dome.position.y=HH+.2; dome.castShadow=true;
+const foot=add(new THREE.Mesh(new THREE.CylinderGeometry(R+.5,R+.7,.35,SEG,1,true),darkM)); foot.position.y=.12;
+const tunnel=new THREE.Group(); tunnel.position.set(0,0,-(R+.9)); scene.add(tunnel);
+box(2.0,2.7,1.6,extM,0,1.35,0,tunnel).castShadow=true; box(2.1,.25,1.7,hazardMat(),0,2.75,0,tunnel);
+const odoor=box(1.2,2.1,.08,metalM,0,1.1,-.81,tunnel); box(.16,.2,.04,hdr('#4dff88',2.5),.75,1.3,-.83,tunnel);
+const beacon=new THREE.Mesh(new THREE.CylinderGeometry(.25,.25,12,10,1,true),new THREE.MeshBasicMaterial({color:'#ffe45c',transparent:true,opacity:.3,depthWrite:false,side:THREE.DoubleSide}));
+const homeBeacon=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,16,10,1,true),new THREE.MeshBasicMaterial({color:'#4dff88',transparent:true,opacity:.26,depthWrite:false,side:THREE.DoubleSide}));
+homeBeacon.position.set(0,10.5,-(R+.9)); homeBeacon.visible=false; scene.add(homeBeacon);
+let ONMARS=false, crystal=null, outT=0;
+const EXIT=new THREE.Vector3(0,0,-(R+4.5)), INSIDE_SPOT=new THREE.Vector3(0,1.65,-(R-2.3)), SOLAR_C=new THREE.Vector3(-15,0,22);
+function spawnCrystal(){
+  const g=new THREE.Group(); const m=new THREE.MeshStandardMaterial({color:'#fff2a0',emissive:'#e8b800',emissiveIntensity:1.0,roughness:.25,metalness:0,flatShading:true});
+  for(let i=0;i<5;i++){const c=new THREE.Mesh(new THREE.OctahedronGeometry(.18+Math.random()*.12,0),m);c.scale.y=2;c.position.set((Math.random()-.5)*.4,.25,(Math.random()-.5)*.4);c.rotation.set((Math.random()-.5)*.6,Math.random()*3,(Math.random()-.5)*.6);g.add(c);}
+  let x,z; do{const a=Math.random()*Math.PI*2, r=12+Math.random()*16; x=Math.sin(a)*r; z=Math.cos(a)*r;}while(Math.hypot(x-SOLAR_C.x,z-SOLAR_C.z)<9||Math.hypot(x-ROVER_POS.x,z-ROVER_POS.z)<5);
+  g.position.set(x,window.__gh(x,z),z); const b=beacon.clone(); b.position.y=6; g.add(b); scene.add(g); return g;}
+let leaving=false, autoHome=false, geigerT=0, suitT=0;
+window.goOutside=function(){
+  fadeSleep(()=>{ONMARS=true;outT=0;leaving=false;autoHome=false;document.body.classList.add('outside');homeBeacon.visible=true;
+    camera.position.set(EXIT.x,window.__gh(EXIT.x,EXIT.z)+1.65,EXIT.z); yaw=0; pitch=-.05;
+    crystal=spawnCrystal(); if(S.onsetT==null) S.onsetT=8+Math.random()*14;
+    const idx=radIndex(outsideToday());
+    say(idx>=6?'alarm':'happy', idx>=6?`Radiation is <b>${idx}/10</b> out here! Grab the crystal fast and get back in!`:`You're on Mars! Find the <b>yellow crystal</b> (look for the yellow light) and walk into it.`);
+    if(!S.told.clock){S.told.clock=1;say('happy',`The longer you stay outside, the more radiation you get. The <b>green light</b> shows the way home.`);}
+    if(S.panelDust>=.05) say('worried',`The solar panels are dusty! Walk over to them to clean them.`);
+    updateSuit(); updateHUD();});
+};
+// Earth's storm warning travels at light speed and still arrives minutes after the storm itself: the base must decide alone.
+function lateWarning(){ S.warnT=0; const o=orbits(today()[0]);
+  pushMsg({alert:true,title:'STORM WARNING FROM EARTH',body:`Mission control: "A solar storm is heading for Mars. Take shelter!" This message needed <b>${o.min} minutes</b> to reach you.`,tags:['Arrived after the storm']});
+  say('worried',`A warning from Earth just arrived... <b>${o.min} minutes</b> late! Radio is too slow to save you. On Mars, your own radiation monitor is the first alarm.`); }
+function enterBase(){
+  if(leaving) return; leaving=true; autoHome=false;
+  fadeSleep(()=>{ONMARS=false;leaving=false;document.body.classList.remove('outside');homeBeacon.visible=false; if(crystal){scene.remove(crystal);crystal=null;}
+    camera.position.copy(INSIDE_SPOT); yaw=Math.PI; pitch=-.05; $('prompt').style.display='none'; if(S.warnT) lateWarning(); updateHUD();});
+}
+window.goInside=function(){
+  if(!ONMARS||leaving) return;
+  if(Math.hypot(camera.position.x-EXIT.x,camera.position.z-EXIT.z)<3) return enterBase();
+  autoHome=true; toast('Walking back to the airlock…');
+};
+function updateSuit(){ const idx=radIndex(outsideToday());
+  $('suit').innerHTML=`Radiation out here <b style="color:${radCol(idx)}">${idx}/10</b> · time outside${bar(evaFrac(),radCol(idx))}`; }
+function stepOutside(dt,mv){
+  outT+=dt; if(!leaving) S.evaT=(S.evaT||0)+dt; const p=camera.position, idx=radIndex(outsideToday());
+  const rr=Math.hypot(p.x,p.z); if(rr<R+1.0 && !(Math.abs(p.x)<1.1&&p.z<0)){p.x*=(R+1.0)/rr;p.z*=(R+1.0)/rr;}
+  if(Math.abs(p.x)<1.1 && p.z>-(R+1.8) && p.z<0) p.z=-(R+1.8);
+  if(rr>90){p.x*=90/rr;p.z*=90/rr;}
+  p.y+=(window.__gh(p.x,p.z)+1.65+(mv.lengthSq()>0?Math.sin(performance.now()/160)*.04:0)-p.y)*.35;
+  // Geiger clicks and camera "snow": faster and thicker when the radiation is higher (dose = how strong x how long)
+  geigerT-=dt; if(geigerT<=0){geigerT=(1.6/(idx*idx*.25+.5))*(.5+Math.random()); sfx('geiger');}
+  if(idx>=4) snowT=Math.max(snowT,.3);
+  const sn=stormNow();
+  if(sn.fresh>0 && !S.arrived && S.evaT>=S.onsetT){ S.arrived=true; S.warnT=S.evaT+7; sfx('alarm'); flashAlarm(4);
+    say('alarm',`Radiation is shooting up! The solar storm is here. <b>Get back inside, fast!</b>`); updateHUD(); updateSuit(); }
+  if(S.arrived && sn.fresh>0 && !leaving) S.stormT=(S.stormT||0)+dt;
+  if(S.warnT && S.evaT>=S.warnT) lateWarning();
+  suitT-=dt; if(suitT<=0){suitT=.25; updateSuit();}
+  if(S.evaT>=EVA_FULL && !S.told.long){S.told.long=1; say('worried',`You have been outside a long time. Head back to the green light!`);}
+  const pr=$('prompt'); pr.style.display='none';
+  if(crystal){const d=Math.hypot(p.x-crystal.position.x,p.z-crystal.position.z); crystal.rotation.y+=dt*1.2;
+    if(d<1.6){scene.remove(crystal);crystal=null;S.samples++;sfx('win');updateHUD();showPhoto();}}
+  if(S.panelDust>0 && Math.hypot(p.x-SOLAR_C.x,p.z-SOLAR_C.z)<8){S.panelDust=0;S.cleaned=true;sfx('ok');toast('Solar panels cleaned! Full power again.');drawScreens();updateHUD();}
+  const de=Math.hypot(p.x-EXIT.x,p.z-EXIT.z);
+  if(de<2.2 && outT>3){pr.style.display='block';pr.innerHTML=TOUCH?'Tap <b>GO INSIDE</b>':'Press <b>E</b> to go back inside';}
+}
+/* ===================== CONTROLS ===================== */
+let keys={}, uiOpen=true, yaw=Math.PI, pitch=-0.05, drag=null, autoWalk=null;
+camera.position.set(0,1.65,-1.2);
+addEventListener('keydown',e=>{if(uiOpen){if(e.key==='Escape'&&!ovModal)closeOv();return;}keys[e.key.toLowerCase()]=true;if((e.key==='e'||e.key==='E')&&ONMARS){if(Math.hypot(camera.position.x-EXIT.x,camera.position.z-EXIT.z)<2.2)enterBase();return;}
+  if(e.key==='e'||e.key==='E'||e.key==='Enter'){const st=nearest();if(st&&st.d<2.4)useStation(st.st);}});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+let zoom=false; addEventListener('keydown',e=>{if(!uiOpen&&(e.key==='z'||e.key==='Z'))zoom=true;}); addEventListener('keyup',e=>{if(e.key==='z'||e.key==='Z')zoom=false;});
+canvas.addEventListener('pointerdown',e=>{if(drag)return;drag={id:e.pointerId,x:e.clientX,y:e.clientY,moved:0};canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing';});
+canvas.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.abs(dx)+Math.abs(dy);drag.x=e.clientX;drag.y=e.clientY;yaw-=dx*0.005;pitch=Math.max(-1.2,Math.min(1.2,pitch-dy*0.005));});
+canvas.addEventListener('pointerup',e=>{if(!drag||e.pointerId!==drag.id)return;canvas.style.cursor='grab';if(drag.moved<8&&!uiOpen)clickAt(e);drag=null;});
+canvas.addEventListener('pointercancel',()=>{drag=null;});
+// touch joystick + binoculars
+const joy={x:0,y:0,id:null}; (function(){const J=$('joy'),K=$('knob');const upd=e=>{const r=J.getBoundingClientRect();let dx=e.clientX-(r.left+60),dy=e.clientY-(r.top+60);const d=Math.hypot(dx,dy);if(d>45){dx*=45/d;dy*=45/d;}joy.x=dx/45;joy.y=dy/45;K.style.left=(35+dx)+'px';K.style.top=(35+dy)+'px';};
+  J.addEventListener('pointerdown',e=>{e.stopPropagation();joy.id=e.pointerId;J.setPointerCapture(e.pointerId);upd(e);autoWalk=null;});
+  J.addEventListener('pointermove',e=>{if(e.pointerId===joy.id)upd(e);});
+  const end=e=>{if(e.pointerId!==joy.id)return;joy.id=null;joy.x=joy.y=0;K.style.left='35px';K.style.top='35px';};
+  J.addEventListener('pointerup',end);J.addEventListener('pointercancel',end);
+  const B=$('binoBtn');B.addEventListener('pointerdown',e=>{e.stopPropagation();if(!uiOpen)zoom=true;});['pointerup','pointercancel','pointerleave'].forEach(t=>B.addEventListener(t,()=>zoom=false));})();
+const ray=new THREE.Raycaster();
+function clickAt(e){if(ONMARS)return;const r=canvas.getBoundingClientRect();const v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(v,camera);const h=ray.intersectObjects(clickables,false)[0];
+  if(h){const st=h.object.userData.station;const d=camera.position.distanceTo(new THREE.Vector3(st.pos.x,1.65,st.pos.z));if(d<2.6)useStation(st);else autoWalk=st;}}
+function useStation(st){autoWalk=null;sfx('tick');st.open();}
+function nearest(){let best=null;for(const st of stations){const d=Math.hypot(camera.position.x-st.pos.x,camera.position.z-st.pos.z);if(!best||d<best.d)best={st,d};}return best;}
+
+function step(dt){
+  if(uiOpen) return;
+  const f=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)), r=new THREE.Vector3(-f.z,0,f.x);
+  let mv=new THREE.Vector3();
+  if(keys['w']||keys['arrowup'])mv.add(f); if(keys['s']||keys['arrowdown'])mv.sub(f);
+  if(keys['d'])mv.add(r); if(keys['a'])mv.sub(r);
+  if(joy.id!==null){mv.addScaledVector(f,-joy.y);mv.addScaledVector(r,joy.x);}
+  if(keys['arrowleft'])yaw+=dt*1.8; if(keys['arrowright'])yaw-=dt*1.8;
+  if(autoWalk){const tgt=new THREE.Vector3(autoWalk.pos.x,camera.position.y,autoWalk.pos.z);const to=tgt.clone().sub(camera.position);to.y=0;const d=to.length();
+    if(d<2.0){const st=autoWalk;autoWalk=null;useStation(st);} else {mv.copy(to.normalize());const ty=Math.atan2(-to.x,-to.z);let dy=ty-yaw;dy=Math.atan2(Math.sin(dy),Math.cos(dy));yaw+=dy*Math.min(1,dt*6);}}
+  if(ONMARS&&autoHome){ if(mv.lengthSq()>0) autoHome=false; else { const p=camera.position, direct=p.z<=-(R+1);   // walk round the base, then to the airlock
+      const tx=direct?EXIT.x:(p.x>=0?1:-1)*(R+3.5), tz=direct?EXIT.z:-(R+2), to=new THREE.Vector3(tx-p.x,0,tz-p.z), d=to.length();
+      if(direct&&d<2) enterBase(); else if(d>.01){mv.copy(to.normalize());const ty=Math.atan2(-to.x,-to.z);let dy=ty-yaw;dy=Math.atan2(Math.sin(dy),Math.cos(dy));yaw+=dy*Math.min(1,dt*6);} } }
+  if(mv.lengthSq()>0){mv.normalize().multiplyScalar(dt*(ONMARS?3.4:2.6));camera.position.add(mv);}
+  if(ONMARS){stepOutside(dt,mv);return;}
+  // collisions: stay inside hab, keep off furniture
+  const p=camera.position; const rr=Math.hypot(p.x,p.z); if(rr>R-1.0){p.x*= (R-1.0)/rr; p.z*=(R-1.0)/rr;}
+  for(const c of colliders){const dx=p.x-c.p.x,dz=p.z-c.p.z,d=Math.hypot(dx,dz);if(d<c.r){p.x=c.p.x+dx/d*c.r;p.z=c.p.z+dz/d*c.r;}}
+  if(mv.lengthSq()>0)camera.position.y=1.65+Math.sin(performance.now()/140)*.025; else camera.position.y+=(1.65-camera.position.y)*.2;
+  const n=nearest(); const pr=$('prompt');
+  if(n&&n.d<2.4){pr.style.display='block';pr.innerHTML=TOUCH?`Tap the screen: <b>${n.st.name.toUpperCase()}</b>`:`Press <b>E</b> or click: <b>${n.st.name.toUpperCase()}</b>`;} else pr.style.display='none';
+}
+
+/* ===================== EFFECTS ===================== */
+let alarmT=0, snowT=0; const snowC=$('snow'), sg=snowC.getContext('2d');
+function flashAlarm(sec){alarmT=sec;}
+function startSnow(sec){snowT=sec;}
+function fadeSleep(cb){const o=$('alarm');o.style.transition='none';o.style.boxShadow='none';o.style.background='#000';o.style.opacity=0;requestAnimationFrame(()=>{o.style.transition='opacity .6s';o.style.opacity=1;setTimeout(()=>{cb();o.style.opacity=0;setTimeout(()=>{o.style.background='';o.style.boxShadow='inset 0 0 120px 30px #ff1a00';},650)},700)});}
+const ringBase=ring.material.color.clone();
+function effects(dt,t){
+  let red=0;
+  if(alarmT>0){alarmT-=dt;red=(Math.sin(t*10)+1)/2;}
+  if(snowT>0){snowT-=dt;red=Math.max(red,(Math.sin(t*6)+1)/4);snowC.style.opacity=1;const w=snowC.width=innerWidth/3|0,h=snowC.height=innerHeight/3|0;sg.clearRect(0,0,w,h);sg.fillStyle='#fff';const n=snowT>3?160:60;for(let i=0;i<n;i++){const x=Math.random()*w,y=Math.random()*h;Math.random()<.3?sg.fillRect(x,y,Math.random()*12+2,1):sg.fillRect(x,y,1,1);}}else snowC.style.opacity=0;
+  redL.intensity=red*25; grade.uniforms.red.value=red*.8; lamps.forEach(l=>l.intensity=14-red*9);
+  ring.material.color.copy(ringBase).lerp(new THREE.Color(3,.2,.1),red);
+  grade.uniforms.t.value=t%10; belt.forEach(b=>b.offset.y=(b.offset.y+dt*(S&&S.acts&&S.acts.includes('exercise')?1.5:0))%1); if(fan&&S) fan.rotation.z-=dt*(2+S.alloc.air*2.2);
+  leds.forEach((l,i)=>l.visible=((t*1.7+i*.37)%1)>.25);
+  const arr=motes.geometry.attributes.position.array;for(let i=1;i<arr.length;i+=3){arr[i]+=dt*.03;if(arr[i]>3)arr[i]=0;}motes.geometry.attributes.position.needsUpdate=true;
+  const da=OUT.dust.geometry.attributes.position.array;for(let i=0;i<da.length;i+=3){da[i]+=dt*(1.2+(i%7)*.2);if(da[i]>45)da[i]=-45;}OUT.dust.geometry.attributes.position.needsUpdate=true;
+}
+// binocular captions: real things outside the window
+const SIGHTS=[{p:ROVER_POS.clone().setY(1),t:'That\'s <b>Curiosity</b>, NASA\'s real rover (official NASA 3D model). It landed in Gale crater in August 2012 and measured the radiation and weather used in this game!'},
+  {p:new THREE.Vector3(-15,1,22),t:'Your <b>solar panels</b>. They make your power every sol. Dust in the air means less sunlight, so less power.'},
+  {p:new THREE.Vector3(0,5000,51000),t:' <b>Mount Sharp</b> (Aeolis Mons): a mountain 5 km tall in the middle of Gale crater, real NASA elevation data. Curiosity has been climbing it since 2014!'}];
+function sightCaption(){if(!zoom)return null;const f=new THREE.Vector3();camera.getWorldDirection(f);let best=null,bd=.985;
+  for(const s of SIGHTS){const d=s.p.clone().sub(camera.position).normalize().dot(f);if(d>bd){bd=d;best=s;}}return best;}
+
+/* ===================== INTRO FILM (animated in real time, skippable) =====================
+   Six short shots. Each one gives a true fact the player will need for a choice later. */
+let INTRO=null, introSet=null;
+const introCam=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,2000);
+const rpass=composer.passes[0];
+function planetTex(kind){return canvasTex(512,256,(g,w,h)=>{const im=g.createImageData(w,h),d=im.data;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const u=x/w*8,v=y/h*4,lat=Math.abs(y/h-.5)*2,m=x/w;
+    const n=fbm(u,v,5)*(1-m)+fbm(u-8,v,5)*m; let r,gg,b;          // blended so the texture wraps without a seam
+    if(kind==='earth'){const c=fbm(u*2+40,v*2+7,4)*(1-m)+fbm(u*2+24,v*2+7,4)*m;
+      if(lat>.88){r=236;gg=241;b=246;} else if(n>.53){const k=Math.min(1,(n-.53)*6);r=64+k*96;gg=128+k*28;b=58+k*22;} else {r=18;gg=66+n*70;b=150+n*90;}
+      if(c>.56){const a=Math.min(1,(c-.56)*7);r+=(255-r)*a;gg+=(255-gg)*a;b+=(255-b)*a;}}
+    else {r=150+n*95;gg=68+n*52;b=38+n*26; if(n<.43){r*=.62;gg*=.62;b*=.68;} if(lat>.92){r=240;gg=234;b=226;}}
+    const i=(y*w+x)*4;d[i]=r;d[i+1]=gg;d[i+2]=b;d[i+3]=255;}
+  g.putImageData(im,0,0);});}
+function buildIntro(){
+  const sc=new THREE.Scene(); sc.background=new THREE.Color('#02030a');
+  const sp=[];for(let i=0;i<1800;i++){const v=new THREE.Vector3().randomDirection().multiplyScalar(600);sp.push(v.x,v.y,v.z);}
+  sc.add(new THREE.Points(new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute(sp,3)),new THREE.PointsMaterial({color:'#ffffff',size:1.7,sizeAttenuation:false,transparent:true,opacity:.85})));
+  const SUN=new THREE.Vector3(-70,6,-60), add2=o=>{sc.add(o);return o};
+  const glowM=(c,o)=>new THREE.SpriteMaterial({map:softDot(),color:c,transparent:true,opacity:o,blending:THREE.AdditiveBlending,depthWrite:false});
+  const sun=add2(new THREE.Mesh(new THREE.SphereGeometry(7,32,16),new THREE.MeshBasicMaterial({color:new THREE.Color(3,2.2,1.1)}))); sun.position.copy(SUN);
+  const glow=add2(new THREE.Sprite(glowM('#ffb060',.9))); glow.scale.set(64,64,1); glow.position.copy(SUN);
+  const L=add2(new THREE.PointLight('#fff4e0',3.2,0,0)); L.position.copy(SUN); add2(new THREE.AmbientLight('#8894aa',2.4));
+  const earth=add2(new THREE.Mesh(new THREE.SphereGeometry(4,48,24),(m=>{m.emissiveMap=m.map;m.emissive.set('#ffffff');m.emissiveIntensity=.38;return m;})(new THREE.MeshStandardMaterial({map:planetTex('earth'),roughness:.8}))));
+  const mars=add2(new THREE.Mesh(new THREE.SphereGeometry(2.6,48,24),(m=>{m.emissiveMap=m.map;m.emissive.set('#ffffff');m.emissiveIntensity=.38;return m;})(new THREE.MeshStandardMaterial({map:planetTex('mars'),roughness:1})))); mars.position.set(80,0,14);
+  // the crew ship
+  const ship=add2(new THREE.Group()), white=new THREE.MeshStandardMaterial({color:'#ebe8e1',roughness:.5,metalness:.2});
+  const part=(geo,mat,z,rx=Math.PI/2)=>{const m=new THREE.Mesh(geo,mat);m.rotation.x=rx;m.position.z=z;ship.add(m);return m;};
+  part(new THREE.CylinderGeometry(.42,.42,1.7,20),white,0); part(new THREE.ConeGeometry(.42,.8,20),white,1.25);
+  part(new THREE.ConeGeometry(.36,.5,20),new THREE.MeshStandardMaterial({color:'#30343a',roughness:.6}),-1.0);
+  part(new THREE.CylinderGeometry(.435,.435,.16,20),new THREE.MeshStandardMaterial({color:'#ff7a3c',roughness:.5}),.45);
+  for(const s of [-1,1]){const wing=new THREE.Mesh(new THREE.BoxGeometry(1.5,.03,.6),new THREE.MeshStandardMaterial({color:'#1b3a78',metalness:.5,roughness:.3}));wing.position.set(s*1.15,0,-.1);ship.add(wing);}
+  const flame=new THREE.Sprite(glowM('#ff9a4a',.95)); flame.scale.set(1.5,1.5,1); flame.position.z=-1.45; ship.add(flame);
+  // the radiation storm: a cloud of particles thrown out by the Sun towards the ship
+  const A=new THREE.Vector3(5,1,2), B=new THREE.Vector3(76,.5,12);
+  const P=u=>{const p=A.clone().lerp(B,u);p.y+=Math.sin(Math.PI*u)*5;return p;};
+  const aim=P(.46).sub(SUN).normalize(), bp=[];
+  for(let i=0;i<2600;i++){const v=new THREE.Vector3().randomDirection().multiplyScalar(.3).add(aim).normalize().multiplyScalar(1-.3*Math.random()*Math.random());bp.push(v.x,v.y,v.z);}
+  const burst=add2(new THREE.Points(new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute(bp,3)),new THREE.PointsMaterial({color:'#ffa060',size:3.2,sizeAttenuation:false,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false})));
+  burst.position.copy(SUN); burst.frustumCulled=false;
+  return {sc,SUN,sun,glow,earth,mars,ship,flame,burst,P};
+}
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const SHOTS=[
+ {d:10,space:1,cap:['happy',`Hi, I'm <b>Sojourner</b>! We are flying to Mars. It is so far away that a radio call home takes up to <b>22 minutes</b>. So on Mars, <b>you</b> decide.`],
+  run(e,I){const s=introSet,p=s.P(.03+.2*e); s.ship.position.copy(p); s.ship.lookAt(s.P(.06+.2*e)); introCam.position.copy(p).add(V(5.5,2.2,5)); introCam.lookAt(p);}},
+ {d:11,space:1,cap:['alarm',`Watch out! Sometimes the Sun throws out a <b>radiation storm</b>. You can't see it or feel it. Only <b>thick walls</b> keep you safe.`],
+  run(e,I,k){const s=introSet,p=s.P(.4+.12*e),d=p.clone().sub(s.SUN),dist=d.length(); d.normalize(); s.ship.position.copy(p); s.ship.lookAt(s.P(.43+.12*e));
+    introCam.position.copy(p).addScaledVector(d,9).add(V(2.5,2.6,0)); introCam.lookAt(p);
+    const f=Math.max(0,(k-.18)/.5), r=f*dist*1.35; s.sun.scale.setScalar(1+.18*Math.sin(Math.min(1,f*3)*Math.PI)); s.glow.scale.setScalar(64+60*Math.sin(Math.min(1,f*2)*Math.PI));
+    s.burst.scale.setScalar(Math.max(.01,r)); s.burst.material.opacity=f>0?Math.min(1,f*5)*Math.max(0,1.25-f):0;
+    if(r>dist*.9&&!I.hit){I.hit=1;startSnow(2.4);flashAlarm(1.6);}}},
+ {d:4,space:1,nowait:1,cap:['happy',`Here we are: <b>Gale crater</b> on Mars. NASA's rover <b>Curiosity</b> has measured the weather and radiation here since 2012. This game uses its real numbers!`],
+  run(e){const s=introSet,p=s.P(.84+.13*e); s.ship.position.copy(p); s.ship.lookAt(s.mars.position); s.burst.material.opacity=0; introCam.position.copy(p).add(V(-6,2,4.5)); introCam.lookAt(s.mars.position);}},
+ {d:8,
+  run(e){const a=V(150,72,190).lerp(V(24,7.5,36),e); camera.position.copy(a); camera.lookAt(V(-2,2.2,8));}},
+ {d:10,cap:['worried',`Your power comes from <b>sunlight</b>. But dust lands on the solar panels every day. Dusty panels make less power, so someone must go out and <b>clean them</b>.`],
+  run(e){const a=.9+1.5*e,x=-15+13*Math.cos(a),z=22+13*Math.sin(a); camera.position.set(x,window.__gh(x,z)+3.4+e,z); camera.lookAt(V(-15,1.2,22));
+    const d=.6*Math.min(1,e*1.6),m=window.__panelM; m.color.setRGB(1-d*.2,1-d*.6,1-d*.9); m.roughness=.18+d*1.2;}},
+ {d:11,cap:['happy',`Inside the base: a <b>treadmill</b> to keep muscles strong in Mars's weak gravity, a <b>bunk</b> for rest and a <b>farm</b> for food. They all need looking after.`],
+  run(e){const a=THREE.MathUtils.degToRad(-150-118*e),sx=Math.sin(a),cz=Math.cos(a); camera.position.set(-sx*1.6,1.65,-cz*1.6); camera.lookAt(V(sx*5,1.35,cz*5));}},
+ {d:8,cap:['happy',`A day on Mars is called a <b>sol</b>. Your mission: <b>10 sols</b> and <b>3 crystals</b>. Every choice counts, commander!`],
+  run(e){camera.position.set(0,1.65,-2.6+3.6*e); camera.lookAt(V(0,1.9,12));}}];
+/* ---- intro sound: Sojourner's voice, a soft music pad and a noise bed for engines, storm and wind ---- */
+let MUTE=false, IA=null;
+/* Sojourner's voice = recorded clips assets/voice/<shot>.mp3 (made with tools/make_voice.py, or recorded by the team).
+   If a clip is missing the speech bubble still shows. Never the browser's robot voice. */
+let VO=null, VAN=null, VBUF=null, VLEV=0;
+function stopVoice(){ if(VO){const a=VO; VO=null; a.onended=a.onerror=null; try{a.pause();}catch(e){}} if(INTRO)INTRO.speaking=false; }
+function speak(i){ const I=INTRO; stopVoice(); if(MUTE||!I) return;
+  try{ const a=new Audio(`assets/voice/${i}.mp3`); a.preload='auto';
+    if(AC){ try{ if(!VAN){VAN=AC.createAnalyser(); VAN.fftSize=512; VAN.connect(AC.destination); VBUF=new Uint8Array(VAN.fftSize);} AC.createMediaElementSource(a).connect(VAN); }catch(e){} }
+    const done=()=>{ if(VO===a){VO=null; I.speaking=false;} };
+    a.onended=a.onerror=done; VO=a; I.speaking=true; const pr=a.play(); if(pr&&pr.catch)pr.catch(done);
+  }catch(e){ I.speaking=false; } }
+// how loud the voice is right now (0..1), so the mouth moves with the real words
+function voiceLevel(){ if(!VAN||!VO) return null; VAN.getByteTimeDomainData(VBUF); let s=0; for(let k=0;k<VBUF.length;k++){const x=(VBUF[k]-128)/128; s+=x*x;} return Math.sqrt(s/VBUF.length); }
+function introAudio(on){ try{
+  if(!on){ if(IA){const a=IA; IA=null; clearInterval(a.timer); a.master.gain.setTargetAtTime(0,AC.currentTime,.12); setTimeout(()=>{try{a.noise.stop();a.master.disconnect();}catch(e){}},700);} return; }
+  if(IA) return; AC=AC||new (window.AudioContext||window.webkitAudioContext)(); if(AC.resume)AC.resume();
+  const master=AC.createGain(); master.gain.value=MUTE?0:1; master.connect(AC.destination);
+  const buf=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate), d=buf.getChannelData(0); for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  const noise=AC.createBufferSource(); noise.buffer=buf; noise.loop=true; const nf=AC.createBiquadFilter(); nf.type='lowpass'; nf.frequency.value=140; const ng=AC.createGain(); ng.gain.value=0;
+  noise.connect(nf); nf.connect(ng); ng.connect(master); noise.start();
+  const CH=[[220,261.63,329.63],[174.61,220,261.63],[196,246.94,293.66],[164.81,196,246.94]]; let ci=0;   // A minor, F, G, E minor: calm and a little adventurous
+  const chord=()=>{ if(!IA) return; const t=AC.currentTime, notes=CH[ci++%4];
+    notes.forEach((f,n)=>{ for(const [mul,type,vol] of [[1,'triangle',.034],[2,'sine',.012]]){const o=AC.createOscillator(),g=AC.createGain(); o.type=type; o.frequency.value=f*mul; o.detune.value=(n-1)*4;
+      g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+1.3); g.gain.setValueAtTime(vol,t+3.2); g.gain.linearRampToValueAtTime(0,t+4.7); o.connect(g); g.connect(master); o.start(t); o.stop(t+4.8);} });
+    const o=AC.createOscillator(),g=AC.createGain(); o.type='sine'; o.frequency.value=notes[ci%3]*4; g.gain.setValueAtTime(0,t+1.9); g.gain.linearRampToValueAtTime(.02,t+1.95); g.gain.exponentialRampToValueAtTime(.0001,t+3.4); o.connect(g); g.connect(master); o.start(t+1.9); o.stop(t+3.5); };
+  IA={master,noise,nf,ng,timer:setInterval(chord,4000)}; chord();
+}catch(e){ IA=null; } }
+function bed(type,freq,gain,bump){ if(!IA) return; const t=AC.currentTime; IA.nf.type=type; IA.nf.frequency.setTargetAtTime(freq,t,.3); if(bump){IA.ng.gain.cancelScheduledValues(t);IA.ng.gain.setValueAtTime(bump,t);} IA.ng.gain.setTargetAtTime(gain,t+.05,.5); }
+function chime(){ if(MUTE||!IA) return; const t=AC.currentTime; [[880,0],[1318.5,.09]].forEach(([f,at])=>{const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.05,t+at);g.gain.exponentialRampToValueAtTime(.0001,t+at+.45);o.connect(g);g.connect(IA.master);o.start(t+at);o.stop(t+at+.5);}); }
+const BEDS=[['lowpass',140,.11],['lowpass',140,.11],['lowpass',180,.12],['lowpass',650,.08],['lowpass',520,.07],['lowpass',230,.03],['lowpass',230,.025]];
+function setMute(m){ MUTE=m; if(IA) IA.master.gain.setTargetAtTime(m?0:1,AC.currentTime,.05); if(m)stopVoice();
+  $('cineMute').innerHTML=ic(m?'mute':'vol')+(m?'Sound off':'Sound on'); }
+window.toggleMute=()=>setMute(!MUTE);
+function enterShot(){const I=INTRO,s=SHOTS[I.i]; rpass.scene=s.space?introSet.sc:scene; rpass.camera=s.space?introCam:camera; $('cineNote').style.display=s.space?'block':'none';
+  const b=BEDS[I.i]; bed(b[0],b[1],b[2],I.i===3?.3:0);
+  if(s.cap){$('cineFace').innerHTML=portrait(s.cap[0]);const t=$('cineText');t.innerHTML=s.cap[1];t.style.animation='none';void t.offsetWidth;t.style.animation=''; chime(); speak(I.i);}
+  const parts=SHOTS.filter(x=>x.cap), pi=parts.indexOf(SHOTS.slice(0,I.i+1).reverse().find(x=>x.cap));
+  $('cineDots').innerHTML=parts.map((x,i)=>`<i class="${i<=pi?'on':''}"></i>`).join('');
+  $('cineNext').innerHTML=(pi>=parts.length-1?'Start':'Next')+ic('next');}
+// First visit: a start card. It is also the tap that lets the browser play sound.
+function introGate(){
+  overlay(`<div class="kicker">Mars outpost mission · ages 7 to 12</div><h1 class="title">Sol <span>by</span> Sol</h1>
+  <p class="lead">First, a one-minute film about your trip to Mars. It tells you what you need to know for the mission.</p>
+  <p style="margin-top:18px"><button class="btn" onclick="startIntro()">${ic('play')}Watch the film</button><button class="btn alt" onclick="skipIntro()">Skip to the game</button></p>
+  <p class="fine">The film has music and a voice. You can turn the sound off or skip any part.</p>`,true,'hero');
+}
+const markSeen=()=>{try{localStorage.setItem('solbysol_intro','1');}catch(e){}};
+window.skipIntro=()=>{markSeen();titleScreen();};
+function startIntro(){
+  if(!introSet) introSet=buildIntro();
+  $('ov').classList.add('hide'); uiOpen=true; ovModal=true; document.body.classList.add('cine'); $('cine').classList.remove('hide');
+  introAudio(true); setMute(MUTE);
+  INTRO={i:0,t:0,hit:0,speaking:false}; enterShot();
+}
+function nextShot(){const I=INTRO; I.i++; I.t=0; if(I.i>=SHOTS.length) return endIntro(); enterShot();}
+// Skip just this part: jump to the next shot that starts a new caption.
+function nextPart(){const I=INTRO; if(!I) return; stopVoice(); I.speaking=false; snowT=0; alarmT=0;
+  let j=I.i+1; while(j<SHOTS.length&&!SHOTS[j].cap) j++; if(j>=SHOTS.length) return endIntro(); I.i=j; I.t=0; I.hit=0; introSet.burst.material.opacity=0; enterShot();}
+function introTick(dt){const I=INTRO, s=SHOTS[I.i]; I.t+=dt;
+  const talking=I.speaking&&!s.nowait&&I.t<s.d+10;       // a shot never ends while Sojourner is still talking
+  if(I.t>=s.d&&!talking) return nextShot();
+  const k=Math.min(1,I.t/s.d); s.run(k*k*(3-2*k),I,k); introSet.earth.rotation.y+=dt*.05; introSet.mars.rotation.y+=dt*.05; introSet.flame.material.opacity=.75+.25*Math.sin(performance.now()/60);
+  if(I.hit===1){I.hit=2; bed('bandpass',1900,.2); if(!MUTE)sfx('alarm'); setTimeout(()=>{if(INTRO===I&&I.i===1)bed('lowpass',140,.11);},2600);}
+  const mo=$('cineFace').querySelector('.mo'), n=performance.now();   // talking mouth
+  const lv=voiceLevel(); VLEV+=((lv==null?0:Math.min(1,lv*9))-VLEV)*.45;
+  if(mo) mo.setAttribute('ry',I.speaking?(lv!=null?.4+5.6*VLEV:1.2+4.6*Math.abs(Math.sin(n/75))*(.55+.45*Math.sin(n/260))).toFixed(1):'0');
+  $('cineFade').style.opacity=Math.max(0,1-I.t/.45,talking?0:1-(s.d-I.t)/.45);}
+function endIntro(){ if(!INTRO) return; INTRO=null; stopVoice(); introAudio(false);
+  rpass.scene=scene; rpass.camera=camera; camera.position.set(0,1.65,-1.2); yaw=Math.PI; pitch=-.05;
+  window.__panelM.color.setRGB(1,1,1); window.__panelM.roughness=.18; snowT=0; alarmT=0;
+  document.body.classList.remove('cine'); $('cine').classList.add('hide'); markSeen();
+  if(S) drawScreens(); titleScreen(); }
+const seenIntro=()=>{try{return localStorage.getItem('solbysol_intro')==='1';}catch(e){return false;}};
+window.startIntro=startIntro; window.endIntro=endIntro; window.nextPart=nextPart; window.__shot=(i,t)=>{if(!INTRO)startIntro();INTRO.i=i;INTRO.t=t||0;INTRO.hit=0;enterShot();};   // debug: jump to a shot
+addEventListener('keydown',e=>{if(!INTRO)return; if(e.key==='Escape')endIntro(); else if(e.key==='Enter'||e.key===' '||e.key==='ArrowRight'){e.preventDefault();nextPart();}});
+
+/* ===================== LOOP ===================== */
+const clock=new THREE.Clock(); let screenT=0, fpsAcc=0, fpsN=0, fpsCheck=false;
+function loop(){const dt=Math.min(.05,clock.getDelta()),t=clock.elapsedTime;if(INTRO)introTick(dt);else{step(dt);camera.rotation.set(pitch,yaw,0);} effects(dt,t); sky.position.copy(camera.position);
+  const tf=zoom?12:70; if(Math.abs(camera.fov-tf)>.1){camera.fov+=(tf-camera.fov)*Math.min(1,dt*8);camera.updateProjectionMatrix();}
+  const cap=sightCaption(); if(cap){const pr=$('prompt');pr.style.display='block';pr.innerHTML=cap.t;}
+  screenT+=dt;if(screenT>.5&&S){screenT=0;drawScreens();}
+  if(fpsCheck&&!uiOpen){fpsAcc+=dt;fpsN++;if(fpsAcc>3){const fps=fpsN/fpsAcc;fpsCheck=false;if(fps<32&&Q==='high'){Q='low';applyQuality();toast('Switched to fast graphics for your computer. Press <b>G</b> to switch back.');}}}
+  composer.render(dt);requestAnimationFrame(loop);}
+addEventListener('resize',resize); window.__dbg={scene,camera,THREE}; window.__open=n=>stations.find(x=>x.name===n).open(); window.__S=()=>S; window.__cr=()=>crystal; window.__adj=(k,d)=>adj(k,d); window.__end=()=>endSol(); window.__new=()=>newMission();
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();
+  if(k==='p'){RETRO=!RETRO;applyQuality();toast(RETRO?'Retro pixel mode ON (P to turn off)':'Retro pixel mode OFF');}
+  if(k==='g'){Q=Q==='high'?'low':'high';applyQuality();toast(Q==='high'?'High graphics':'Fast graphics');}});
+applyQuality(); S={sol:1,food:4,dose:0,samples:0,battery:0,f:{rad:10,fit:8,air:9,well:8,mood:7},acts:[],alloc:{air:3,farm:3},storms:[],days:[],msgs:[],read:true,wx:WEATHER[2]}; S0();
+window.startFps=()=>{fpsCheck=true;fpsAcc=0;fpsN=0;};
+function S0(){setDayTime(); drawScreens(); S=null; window.__ready=true; if(seenIntro()) titleScreen(); else introGate(); loop(); if(document.fonts)Promise.all([document.fonts.load('700 60px "Barlow Condensed"'),document.fonts.load('600 13px Barlow')]).catch(()=>{}).then(()=>{labelDraws.forEach(f=>f());if(S)drawScreens();});}
+</script>
+</body>
+</html>

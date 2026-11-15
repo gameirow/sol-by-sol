@@ -1,0 +1,9 @@
+# built files (make them with: python build.py)
+dist/
+sol-by-sol-site.zip
+# personal Claude Code settings
+.claude/settings.local.json
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
